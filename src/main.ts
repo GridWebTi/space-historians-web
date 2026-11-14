@@ -441,6 +441,7 @@ function openCard() {
   keys.clear();
   discoveryToast.classList.add('hidden');
   discoveryCard.classList.remove('hidden');
+  storyTabs.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
 }
 
 function closeCard() {
@@ -462,6 +463,9 @@ function updateDiscoveryToast() {
 
 investigateButton.addEventListener('click', openCard);
 closeButton.addEventListener('click', closeCard);
+// Esc ou clique fora do cartão também fecham a ficha.
+window.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeCard(); });
+discoveryCard.addEventListener('click', (event) => { if (event.target === discoveryCard) closeCard(); });
 
 window.addEventListener('keydown', (event) => {
   if ((event.key === 'e' || event.key === 'E' || event.key === 'Enter') && !isCardOpen() && distanceToStation() < DISCOVERY_RADIUS) {
