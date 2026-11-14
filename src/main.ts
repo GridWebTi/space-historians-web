@@ -360,8 +360,47 @@ discoveryRing.material = orangeMat;
 const keys = new Set<string>();
 window.addEventListener('keydown', (event) => keys.add(event.key.toLowerCase()));
 window.addEventListener('keyup', (event) => keys.delete(event.key.toLowerCase()));
+// Controle por toque: joystick virtual exibido em telas sensíveis ao toque.
+const joystick = document.querySelector<HTMLElement>('#joystick')!;
+const joystickKnob = joystick.querySelector<HTMLElement>('.joystick-knob')!;
+const touchInput = { x: 0, z: 0 };
+let joystickPointer: number | null = null;
+const enableTouchMode = () => document.documentElement.classList.add('touch');
+if (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0) enableTouchMode();
+window.addEventListener('touchstart', enableTouchMode, { once: true, passive: true });
+
+function updateJoystick(event: PointerEvent) {
+  const rect = joystick.getBoundingClientRect();
+  const maxOffset = rect.width / 2;
+  let dx = event.clientX - (rect.left + maxOffset);
+  let dy = event.clientY - (rect.top + maxOffset);
+  const length = Math.hypot(dx, dy);
+  if (length > maxOffset) { dx *= maxOffset / length; dy *= maxOffset / length; }
+  joystickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+  const x = dx / maxOffset;
+  const z = -dy / maxOffset;
+  const deadZone = Math.hypot(x, z) < 0.15;
+  touchInput.x = deadZone ? 0 : x;
+  touchInput.z = deadZone ? 0 : z;
+}
+function releaseJoystick() {
+  joystickPointer = null;
+  touchInput.x = 0;
+  touchInput.z = 0;
+  joystickKnob.style.transform = '';
+}
+joystick.addEventListener('pointerdown', (event) => {
+  event.preventDefault();
+  joystickPointer = event.pointerId;
+  joystick.setPointerCapture(event.pointerId);
+  updateJoystick(event);
+});
+joystick.addEventListener('pointermove', (event) => { if (event.pointerId === joystickPointer) updateJoystick(event); });
+joystick.addEventListener('pointerup', (event) => { if (event.pointerId === joystickPointer) releaseJoystick(); });
+joystick.addEventListener('pointercancel', (event) => { if (event.pointerId === joystickPointer) releaseJoystick(); });
+
 // Evita o astronauta "andando sozinho" quando a janela perde o foco com uma tecla apertada.
-window.addEventListener('blur', () => keys.clear());
+window.addEventListener('blur', () => { keys.clear(); releaseJoystick(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) keys.clear(); });
 
 const intro = document.querySelector<HTMLElement>('#intro')!;
@@ -512,6 +551,7 @@ function openCard() {
   if (!gameStarted || isCardOpen()) return;
   found = true;
   keys.clear();
+  releaseJoystick();
   discoveryToast.classList.add('hidden');
   discoveryCard.classList.remove('hidden');
   storyTabs.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
@@ -559,11 +599,9 @@ const WALK_SPEED = 4.5; // unidades por segundo (equivale ao antigo 0,075 por qu
 // Entrada de movimento: x = direita/esquerda, z = frente/trás (valores de -1 a 1).
 function readMovementInput() {
   const pressed = (...names: string[]) => names.some((name) => keys.has(name));
-  return new Vector3(
-    (pressed('d', 'arrowright') ? 1 : 0) - (pressed('a', 'arrowleft') ? 1 : 0),
-    0,
-    (pressed('w', 'arrowup') ? 1 : 0) - (pressed('s', 'arrowdown') ? 1 : 0),
-  );
+  const x = (pressed('d', 'arrowright') ? 1 : 0) - (pressed('a', 'arrowleft') ? 1 : 0) + touchInput.x;
+  const z = (pressed('w', 'arrowup') ? 1 : 0) - (pressed('s', 'arrowdown') ? 1 : 0) + touchInput.z;
+  return new Vector3(Math.max(-1, Math.min(1, x)), 0, Math.max(-1, Math.min(1, z)));
 }
 
 scene.onBeforeRenderObservable.add(() => {
