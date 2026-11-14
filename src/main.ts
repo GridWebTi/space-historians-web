@@ -27,7 +27,10 @@ scene.fogMode = Scene.FOGMODE_EXP2;
 scene.fogDensity = 0.008;
 scene.fogColor = new Color3(0.04, 0.055, 0.13);
 
-const camera = new ArcRotateCamera('camera', -Math.PI / 2, 1.12, 18, new Vector3(0, 2, 2), scene);
+// A câmera começa atrás do astronauta, olhando na direção da primeira estação.
+const camera = new ArcRotateCamera('camera', Math.PI / 2, 1.12, 18, new Vector3(0, 2, 2), scene);
+// As setas do teclado movem o astronauta; não devem girar a câmera.
+camera.inputs.removeByType('ArcRotateCameraKeyboardMoveInput');
 camera.attachControl(canvas, true);
 camera.lowerRadiusLimit = 11;
 camera.upperRadiusLimit = 24;
@@ -222,10 +225,12 @@ function buildLunarStation() {
 }
 
 const astronaut = buildAstronaut();
+// copyFrom mantém ângulo e distância; atribuir camera.target recalcularia o ângulo com a câmera parada.
+camera.target.copyFrom(astronaut.position.add(new Vector3(0, 1.5, 0)));
 const proceduralAstronautParts = astronaut.getChildren().slice();
 const station = buildLunarStation();
 const landingSite = new TransformNode('apollo-12-landing-site', scene);
-landingSite.position.set(station.position.x + 6.5, 0, station.position.z + 1);
+landingSite.position.set(station.position.x - 1, 0, station.position.z - 7);
 landingSite.rotation.y = -0.5;
 
 async function importSceneAsset(
@@ -331,6 +336,9 @@ discoveryRing.material = orangeMat;
 const keys = new Set<string>();
 window.addEventListener('keydown', (event) => keys.add(event.key.toLowerCase()));
 window.addEventListener('keyup', (event) => keys.delete(event.key.toLowerCase()));
+// Evita o astronauta "andando sozinho" quando a janela perde o foco com uma tecla apertada.
+window.addEventListener('blur', () => keys.clear());
+document.addEventListener('visibilitychange', () => { if (document.hidden) keys.clear(); });
 
 const intro = document.querySelector<HTMLElement>('#intro')!;
 const startButton = document.querySelector<HTMLButtonElement>('#start-button')!;
@@ -522,30 +530,53 @@ scene.onPointerObservable.add((info) => {
   if (mesh && mesh.isDescendantOf(station) && distanceToStation() < CLICK_RADIUS) openCard();
 });
 
+const WALK_SPEED = 4.5; // unidades por segundo (equivale ao antigo 0,075 por quadro a 60 fps)
+
+// Entrada de movimento: x = direita/esquerda, z = frente/trás (valores de -1 a 1).
+function readMovementInput() {
+  const pressed = (...names: string[]) => names.some((name) => keys.has(name));
+  return new Vector3(
+    (pressed('d', 'arrowright') ? 1 : 0) - (pressed('a', 'arrowleft') ? 1 : 0),
+    0,
+    (pressed('w', 'arrowup') ? 1 : 0) - (pressed('s', 'arrowdown') ? 1 : 0),
+  );
+}
+
 scene.onBeforeRenderObservable.add(() => {
   earth.rotation.y += 0.0008;
   discoveryRing.rotation.y += 0.012;
   discoveryRing.scaling.setAll(1 + Math.sin(performance.now() / 500) * 0.04);
   if (!gameStarted || !discoveryCard.classList.contains('hidden')) return;
-  const direction = new Vector3(
-    (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0),
-    0,
-    (keys.has('s') || keys.has('arrowdown') ? 1 : 0) - (keys.has('w') || keys.has('arrowup') ? 1 : 0),
-  );
-  if (direction.lengthSquared() > 0) {
-    direction.normalize();
-    astronaut.position.addInPlace(direction.scale(0.075));
+  // Tempo real entre quadros: a velocidade é a mesma em qualquer computador.
+  const dt = Math.min(engine.getDeltaTime() / 1000, 0.1);
+  const input = readMovementInput();
+  if (input.lengthSquared() > 0) {
+    // Direção relativa à câmera: "frente" é sempre para onde a câmera olha.
+    const forward = camera.target.subtract(camera.position);
+    forward.y = 0;
+    forward.normalize();
+    const right = Vector3.Cross(Vector3.Up(), forward);
+    const direction = right.scale(input.x).add(forward.scale(input.z));
+    if (direction.lengthSquared() > 1) direction.normalize();
+    astronaut.position.addInPlace(direction.scale(WALK_SPEED * dt));
     astronaut.position.y = Math.abs(Math.sin(performance.now() / 115)) * 0.055;
     astronaut.position.x = Math.max(-25, Math.min(25, astronaut.position.x));
     astronaut.position.z = Math.max(-25, Math.min(25, astronaut.position.z));
     // O modelo Poly considera o eixo frontal oposto ao usado pela movimentação.
     astronaut.rotation.y = Math.atan2(direction.x, direction.z) + Math.PI;
-    camera.target = Vector3.Lerp(camera.target, astronaut.position.add(new Vector3(0, 1.5, 0)), 0.045);
   } else {
     astronaut.position.y *= 0.82;
   }
+  // A câmera acompanha o astronauta o tempo todo, de forma suave.
+  const follow = 1 - Math.exp(-dt * 4);
+  camera.target.copyFrom(Vector3.Lerp(camera.target, astronaut.position.add(new Vector3(0, 1.5, 0)), follow));
   updateDiscoveryToast();
 });
 
 engine.runRenderLoop(() => scene.render());
 window.addEventListener('resize', () => engine.resize());
+
+// Gancho de depuração para testes automatizados (somente em desenvolvimento).
+if (import.meta.env.DEV) {
+  (window as unknown as { __game: unknown }).__game = { scene, camera, astronaut, station, landingSite };
+}
