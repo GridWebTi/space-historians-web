@@ -367,8 +367,9 @@ function openStoryStep(step: StoryStep, tab: HTMLButtonElement) {
   storyTabs.querySelectorAll('button').forEach((button) => button.classList.remove('active'));
   tab.classList.add('active');
   storyPanel.classList.remove('hidden');
+  const done = completedSteps.has(step.id);
   storyPanel.innerHTML = `
-    <p class="story-reward">+${step.reward} PONTOS</p>
+    <p class="story-reward">${done ? '✓ ' : '+'}${step.reward} PONTOS</p>
     <h3>${step.title}</h3>
     ${step.paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join('')}
     <div class="story-activity">
@@ -377,19 +378,36 @@ function openStoryStep(step: StoryStep, tab: HTMLButtonElement) {
       <p class="activity-feedback" aria-live="polite"></p>
     </div>`;
 
-  storyPanel.querySelectorAll<HTMLButtonElement>('[data-option]').forEach((option) => {
+  const feedback = storyPanel.querySelector<HTMLElement>('.activity-feedback')!;
+  const options = [...storyPanel.querySelectorAll<HTMLButtonElement>('[data-option]')];
+
+  // Depois do acerto, a atividade fica travada mostrando a resposta certa.
+  const lockAsSolved = (earned: boolean) => {
+    options.forEach((button) => {
+      button.disabled = true;
+      button.classList.toggle('correct', Number(button.dataset.option) === step.activity.correct);
+      button.classList.remove('wrong');
+    });
+    feedback.textContent = earned ? `${step.activity.success} +${step.reward} pontos.` : step.activity.success;
+    feedback.className = 'activity-feedback success';
+  };
+
+  if (done) {
+    lockAsSolved(false);
+    return;
+  }
+
+  options.forEach((option) => {
     option.addEventListener('click', () => {
-      const feedback = storyPanel.querySelector<HTMLElement>('.activity-feedback')!;
       if (Number(option.dataset.option) !== step.activity.correct) {
-        feedback.textContent = 'Quase! Observe as pistas e tente novamente.';
+        option.classList.add('wrong');
+        feedback.textContent = step.activity.hint ?? 'Quase! Observe as pistas e tente novamente.';
         feedback.className = 'activity-feedback try-again';
         return;
       }
       completedSteps.add(step.id);
-      option.classList.add('correct');
-      feedback.textContent = `${step.activity.success} +${step.reward} pontos.`;
-      feedback.className = 'activity-feedback success';
       tab.classList.add('complete');
+      lockAsSolved(true);
       updateKnowledgeScore();
     });
   });
