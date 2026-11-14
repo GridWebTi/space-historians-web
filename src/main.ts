@@ -165,46 +165,68 @@ function buildAstronaut() {
   return root;
 }
 
+// Representação simplificada do ALSEP: central com antena, ligada por cabos
+// a instrumentos espalhados no solo (sismômetro e outros sensores).
 function buildLunarStation() {
   const root = new TransformNode('apollo-12-station', scene);
   root.position.set(1.8, 0, -6.5);
-  const base = MeshBuilder.CreateCylinder('station-base', { diameter: 2.5, height: 1.35, tessellation: 8 }, scene);
-  base.parent = root;
-  base.position.y = 1.55;
-  base.material = goldMat;
-  shadows.addShadowCaster(base);
-  const top = MeshBuilder.CreateCylinder('station-top', { diameterTop: 1.35, diameterBottom: 2.05, height: 1.2, tessellation: 8 }, scene);
-  top.parent = root;
-  top.position.y = 2.75;
-  top.material = metalMat;
-  shadows.addShadowCaster(top);
-  box('station-panel', { width: 1.6, height: 0.75, depth: 0.12 }, new Vector3(0, 1.55, -1.08), orangeMat, root);
-  [-1, 1].forEach((side) => {
-    const strut = MeshBuilder.CreateCylinder(`strut-${side}`, { diameter: 0.12, height: 3.15, tessellation: 12 }, scene);
-    strut.parent = root;
-    strut.position.set(side * 1.35, 0.95, 0);
-    strut.rotation.z = side * 0.72;
-    strut.material = metalMat;
-    shadows.addShadowCaster(strut);
-    const foot = MeshBuilder.CreateCylinder(`foot-${side}`, { diameter: 0.75, height: 0.12, tessellation: 24 }, scene);
-    foot.parent = root;
-    foot.position.set(side * 2.2, 0.08, 0);
-    foot.material = goldMat;
-  });
-  const antenna = MeshBuilder.CreateCylinder('antenna', { diameter: 0.08, height: 1.5 }, scene);
-  antenna.parent = root;
-  antenna.position.set(0.55, 3.85, 0);
-  antenna.material = metalMat;
-  const beacon = MeshBuilder.CreateSphere('beacon', { diameter: 0.28 }, scene);
+  const central = box('alsep-central', { width: 1.5, height: 0.7, depth: 1 }, new Vector3(0, 0.55, 0), goldMat, root);
+  central.receiveShadows = true;
+  box('alsep-sunshade', { width: 1.7, height: 0.06, depth: 1.2 }, new Vector3(0, 1.05, 0), metalMat, root);
+  [-0.6, 0.6].forEach((x) => box(`alsep-leg-${x}`, { width: 0.08, height: 0.3, depth: 0.08 }, new Vector3(x, 0.15, 0), metalMat, root));
+  box('station-panel', { width: 1, height: 0.35, depth: 0.05 }, new Vector3(0, 0.55, -0.52), orangeMat, root);
+
+  const mast = MeshBuilder.CreateCylinder('antenna-mast', { diameter: 0.07, height: 1.6 }, scene);
+  mast.parent = root;
+  mast.position.set(0.45, 1.85, 0.2);
+  mast.material = metalMat;
+  shadows.addShadowCaster(mast);
+  const dish = MeshBuilder.CreateCylinder('antenna-dish', { diameterTop: 0.9, diameterBottom: 0.12, height: 0.28, tessellation: 24 }, scene);
+  dish.parent = root;
+  dish.position.set(0.45, 2.7, 0.2);
+  dish.rotation.x = -0.7;
+  dish.material = metalMat;
+  shadows.addShadowCaster(dish);
+  const beacon = MeshBuilder.CreateSphere('beacon', { diameter: 0.22 }, scene);
   beacon.parent = root;
-  beacon.position.set(0.55, 4.62, 0);
+  beacon.position.set(0.45, 2.95, 0.05);
   beacon.material = orangeMat;
+
+  // Instrumentos ligados por cabos à central.
+  const instruments = [
+    { name: 'sismometro', at: new Vector3(-2.4, 0, -1.4), shape: 'dome' },
+    { name: 'magnetometro', at: new Vector3(2.5, 0, -1.1), shape: 'box' },
+    { name: 'rtg', at: new Vector3(-1.9, 0, 1.6), shape: 'cyl' },
+  ];
+  for (const instrument of instruments) {
+    if (instrument.shape === 'dome') {
+      const dome = MeshBuilder.CreateSphere(`alsep-${instrument.name}`, { diameter: 0.75, slice: 0.5 }, scene);
+      dome.parent = root;
+      dome.position.copyFrom(instrument.at);
+      dome.material = goldMat;
+      shadows.addShadowCaster(dome);
+    } else if (instrument.shape === 'box') {
+      box(`alsep-${instrument.name}`, { width: 0.5, height: 0.5, depth: 0.5 }, instrument.at.add(new Vector3(0, 0.25, 0)), metalMat, root);
+    } else {
+      const cyl = MeshBuilder.CreateCylinder(`alsep-${instrument.name}`, { diameter: 0.45, height: 0.7, tessellation: 16 }, scene);
+      cyl.parent = root;
+      cyl.position.copyFrom(instrument.at.add(new Vector3(0, 0.35, 0)));
+      cyl.material = metalMat;
+      shadows.addShadowCaster(cyl);
+    }
+    const cable = MeshBuilder.CreateTube(`alsep-cabo-${instrument.name}`, { path: [new Vector3(0, 0.03, 0), instrument.at.add(new Vector3(0, 0.03, 0))], radius: 0.025 }, scene);
+    cable.parent = root;
+    cable.material = darkDust;
+  }
   return root;
 }
 
 const astronaut = buildAstronaut();
 const proceduralAstronautParts = astronaut.getChildren().slice();
 const station = buildLunarStation();
+const landingSite = new TransformNode('apollo-12-landing-site', scene);
+landingSite.position.set(station.position.x + 6.5, 0, station.position.z + 1);
+landingSite.rotation.y = -0.5;
 
 async function importSceneAsset(
   fileName: string,
@@ -286,15 +308,12 @@ async function loadOfficialNasaLunarModule() {
     importedRoot.computeWorldMatrix(true);
     const scaledBounds = importedRoot.getHierarchyBoundingVectors(true);
     importedRoot.position.y -= scaledBounds.min.y;
-    importedRoot.parent = station;
+    // O módulo fica ao lado da estação, como marco do local de pouso.
+    importedRoot.parent = landingSite;
 
     for (const mesh of result.meshes) {
       mesh.receiveShadows = true;
       shadows.addShadowCaster(mesh);
-    }
-
-    for (const child of station.getChildren()) {
-      if (child !== importedRoot) child.setEnabled(false);
     }
     document.documentElement.dataset.nasaModel = 'loaded';
   } catch (error) {
@@ -305,7 +324,7 @@ async function loadOfficialNasaLunarModule() {
 
 void loadOfficialNasaLunarModule();
 
-const discoveryRing = MeshBuilder.CreateTorus('discovery-ring', { diameter: 5.2, thickness: 0.06, tessellation: 64 }, scene);
+const discoveryRing = MeshBuilder.CreateTorus('discovery-ring', { diameter: 6.6, thickness: 0.06, tessellation: 64 }, scene);
 discoveryRing.position.set(station.position.x, 0.12, station.position.z);
 discoveryRing.material = orangeMat;
 
