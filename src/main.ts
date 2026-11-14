@@ -356,11 +356,48 @@ prologuePages.innerHTML = gameStory.prologue.paragraphs.map((paragraph) => `<p>$
 prologueMission.textContent = gameStory.prologue.mission;
 encounterCopy.innerHTML = gameStory.firstDiscovery.encounter.map((paragraph) => `<p>${paragraph}</p>`).join('');
 
+const TOTAL_DISCOVERIES = 12;
+const STORAGE_KEY = 'space-historians:progresso:v1';
+const archiveCount = document.querySelector<HTMLElement>('#archive-count')!;
+const archiveProgress = document.querySelector<HTMLElement>('#archive-progress')!;
+const objectiveText = document.querySelector<HTMLElement>('#objective-text')!;
+const routeFirst = document.querySelector<HTMLElement>('#route-01')!;
+
+// Progresso salvo no navegador (sobrevive a recarregar a página no tablet).
+function loadProgress() {
+  try {
+    // ?reiniciar na URL apaga o progresso (útil para testes e apresentações).
+    if (new URLSearchParams(location.search).has('reiniciar')) localStorage.removeItem(STORAGE_KEY);
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Record<string, string[]>;
+    const validIds = new Set<string>(gameStory.firstDiscovery.steps.map((step) => step.id));
+    (saved[gameStory.firstDiscovery.number] ?? []).filter((id) => validIds.has(id)).forEach((id) => completedSteps.add(id));
+  } catch { /* sem armazenamento disponível: segue sem salvar */ }
+}
+
+function saveProgress() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ [gameStory.firstDiscovery.number]: [...completedSteps] }));
+  } catch { /* ignora */ }
+}
+
 function updateKnowledgeScore() {
-  const score = gameStory.firstDiscovery.steps
+  const steps = gameStory.firstDiscovery.steps;
+  const maxScore = steps.reduce((total, step) => total + step.reward, 0);
+  const score = steps
     .filter((step) => completedSteps.has(step.id))
     .reduce((total, step) => total + step.reward, 0);
-  knowledgeScore.textContent = `${score} / 60 PONTOS`;
+  knowledgeScore.textContent = `${score} / ${maxScore} PONTOS`;
+
+  const complete = steps.every((step) => completedSteps.has(step.id));
+  knowledgeScore.classList.toggle('complete', complete);
+  const completedDiscoveries = complete ? 1 : 0;
+  archiveCount.textContent = String(completedDiscoveries).padStart(2, '0');
+  archiveProgress.style.width = `${(completedDiscoveries / TOTAL_DISCOVERIES) * 100}%`;
+  routeFirst.classList.toggle('done', complete);
+  routeFirst.querySelector('span')!.textContent = complete ? `${gameStory.firstDiscovery.mission} · concluído ✓` : `${gameStory.firstDiscovery.mission} · atual`;
+  objectiveText.textContent = complete ? `Ficha ${gameStory.firstDiscovery.number} concluída · ${maxScore} pontos` : 'Encontre a estação lunar';
+  objectiveText.parentElement!.parentElement!.classList.toggle('done', complete);
+  saveProgress();
 }
 
 function openStoryStep(step: StoryStep, tab: HTMLButtonElement) {
@@ -413,12 +450,16 @@ function openStoryStep(step: StoryStep, tab: HTMLButtonElement) {
   });
 }
 
+loadProgress();
 gameStory.firstDiscovery.steps.forEach((step) => {
   const tab = document.createElement('button');
   tab.innerHTML = `<span>${step.label}</span><small>+${step.reward}</small>`;
+  tab.classList.toggle('complete', completedSteps.has(step.id));
   tab.addEventListener('click', () => openStoryStep(step, tab));
   storyTabs.appendChild(tab);
 });
+if (completedSteps.size > 0) found = true;
+updateKnowledgeScore();
 
 startButton.addEventListener('click', () => {
   intro.classList.add('hidden');
