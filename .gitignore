@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.netlify/
+.vite/
+
+*.log
+.DS_Store
+Thumbs.db
+
+*.backup-*
+src/*.backup-*
+index.html.backup-*
+
+.env
+.env.*
+!.env.example
