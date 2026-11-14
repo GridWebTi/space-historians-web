@@ -139,3 +139,11 @@ html.touch .joystick { display: block; }
 html.touch .controls, html.touch .key-hint { display: none; }
 html.touch .discovery-toast { bottom: 196px; }
 @media (max-width: 780px) { html.touch .discovery-toast { left: 16px; right: 16px; width: auto; transform: none; } }
+
+/* Aviso quando o navegador não tem WebGL */
+.no-webgl { position: absolute; z-index: 30; inset: 0; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at 70% 20%, #26316b, #080a20 65%); }
+.no-webgl[hidden] { display: none; }
+.no-webgl > div { width: min(560px, 100%); padding: 32px; border-radius: 22px; text-align: center; }
+.no-webgl h2 { margin: 0 0 14px; font: 700 34px/1 'Barlow Condensed'; text-transform: uppercase; }
+.no-webgl p:not(.eyebrow) { margin: 0 0 12px; color: #c9cee0; font-size: 16px; line-height: 1.55; }
+.no-webgl .no-webgl-small { color: #9098b8 !important; font-size: 13px !important; }

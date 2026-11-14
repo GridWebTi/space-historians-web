@@ -20,6 +20,21 @@ import './style.css';
 import { gameStory, type StoryStep } from './story-data';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game-canvas')!;
+
+// Sem WebGL o jogo não roda: mostra uma orientação em vez de uma tela quebrada.
+function hasWebGL() {
+  try {
+    const probe = document.createElement('canvas');
+    return Boolean(probe.getContext('webgl2') || probe.getContext('webgl'));
+  } catch {
+    return false;
+  }
+}
+if (!hasWebGL()) {
+  document.querySelector<HTMLElement>('#intro')?.classList.add('hidden');
+  document.querySelector<HTMLElement>('#no-webgl')!.hidden = false;
+  throw new Error('WebGL indisponível: o jogo 3D não pode ser iniciado.');
+}
 const engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
 const scene = new Scene(engine);
 scene.clearColor = new Color4(0.018, 0.022, 0.09, 1);

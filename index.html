@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#080b25" />
     <title>Space Historians — Arquivo Lunar</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23080b25' stroke='%23ff9d4c' stroke-width='3'/%3E%3Cpath d='M32 14l4 14 14 4-14 4-4 14-4-14-14-4 14-4z' fill='%23ff9d4c'/%3E%3C/svg%3E" />
   </head>
   <body>
     <main id="game-shell">
@@ -62,6 +63,14 @@
             <button id="continue-button">CONTINUAR EXPLORANDO</button>
           </div>
         </article>
+      </section>
+      <section id="no-webgl" class="no-webgl" hidden>
+        <div class="glass">
+          <p class="eyebrow">NÃO FOI POSSÍVEL ABRIR O MAPA LUNAR</p>
+          <h2>O 3D está desligado neste navegador</h2>
+          <p>Para explorar a Lua, peça a um adulto para ativar a <strong>aceleração de hardware</strong> nas configurações do navegador (Chrome ou Edge: Configurações → Sistema) e recarregue a página.</p>
+          <p class="no-webgl-small">Se estiver em um computador da escola, o 3D pode ter sido bloqueado pela rede. Tente outro navegador ou dispositivo.</p>
+        </div>
       </section>
     </main>
     <script type="module" src="/src/main.ts"></script>
