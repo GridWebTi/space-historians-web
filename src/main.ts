@@ -73,6 +73,25 @@ const goldMat = material('gold', new Color3(0.72, 0.33, 0.08), new Color3(0.08, 
 const metalMat = material('metal', new Color3(0.22, 0.25, 0.32));
 const orangeMat = material('mission-orange', new Color3(1, 0.35, 0.08), new Color3(0.35, 0.045, 0));
 
+// Colisão simples: cada obstáculo é um círculo no chão (x, z, raio).
+type Obstacle = { x: number; z: number; r: number };
+const obstacles: Obstacle[] = [];
+const ASTRONAUT_RADIUS = 0.45;
+const addObstacle = (x: number, z: number, r: number) => obstacles.push({ x, z, r });
+
+function resolveCollisions(position: Vector3) {
+  for (const obstacle of obstacles) {
+    const dx = position.x - obstacle.x;
+    const dz = position.z - obstacle.z;
+    const distance = Math.hypot(dx, dz);
+    const minimum = obstacle.r + ASTRONAUT_RADIUS;
+    if (distance < minimum && distance > 1e-4) {
+      position.x = obstacle.x + (dx / distance) * minimum;
+      position.z = obstacle.z + (dz / distance) * minimum;
+    }
+  }
+}
+
 const ground = MeshBuilder.CreateGround('lunar-surface', { width: 70, height: 70, subdivisions: 2 }, scene);
 ground.material = moonMat;
 ground.receiveShadows = true;
@@ -101,6 +120,7 @@ for (let i = 0; i < 36; i += 1) {
   rock.scaling.y = 0.55;
   rock.material = i % 3 === 0 ? darkDust : moonMat;
   shadows.addShadowCaster(rock);
+  if (radius > 0.3) addObstacle(rock.position.x, rock.position.z, radius * 0.9);
 }
 
 const starMat = material('stars', Color3.White(), new Color3(1, 0.9, 0.78));
@@ -217,10 +237,12 @@ function buildLunarStation() {
       cyl.material = metalMat;
       shadows.addShadowCaster(cyl);
     }
+    addObstacle(root.position.x + instrument.at.x, root.position.z + instrument.at.z, 0.35);
     const cable = MeshBuilder.CreateTube(`alsep-cabo-${instrument.name}`, { path: [new Vector3(0, 0.03, 0), instrument.at.add(new Vector3(0, 0.03, 0))], radius: 0.025 }, scene);
     cable.parent = root;
     cable.material = darkDust;
   }
+  addObstacle(root.position.x, root.position.z, 0.95);
   return root;
 }
 
@@ -232,6 +254,7 @@ const station = buildLunarStation();
 const landingSite = new TransformNode('apollo-12-landing-site', scene);
 landingSite.position.set(station.position.x - 1, 0, station.position.z - 7);
 landingSite.rotation.y = -0.5;
+addObstacle(landingSite.position.x, landingSite.position.z, 2);
 
 async function importSceneAsset(
   fileName: string,
@@ -284,6 +307,7 @@ async function loadKenneySceneAssets() {
       const anchor = new TransformNode(`${asset.name}-anchor`, scene);
       anchor.position.copyFrom(asset.position);
       anchor.rotation.y = asset.rotation;
+      if (asset.file.startsWith('rock')) addObstacle(asset.position.x, asset.position.z, asset.span * 0.45);
       await importSceneAsset(asset.file, asset.name, anchor, asset.span);
     }));
     document.documentElement.dataset.kenneyAssets = 'loaded';
@@ -559,6 +583,7 @@ scene.onBeforeRenderObservable.add(() => {
     const direction = right.scale(input.x).add(forward.scale(input.z));
     if (direction.lengthSquared() > 1) direction.normalize();
     astronaut.position.addInPlace(direction.scale(WALK_SPEED * dt));
+    resolveCollisions(astronaut.position);
     astronaut.position.y = Math.abs(Math.sin(performance.now() / 115)) * 0.055;
     astronaut.position.x = Math.max(-25, Math.min(25, astronaut.position.x));
     astronaut.position.z = Math.max(-25, Math.min(25, astronaut.position.z));
