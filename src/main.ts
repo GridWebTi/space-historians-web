@@ -6,8 +6,8 @@ import {
   Engine,
   GlowLayer,
   HemisphericLight,
-  Mesh,
   MeshBuilder,
+  PointerEventTypes,
   Scene,
   SceneLoader,
   ShadowGenerator,
@@ -408,12 +408,56 @@ startButton.addEventListener('click', () => {
   canvas.focus();
 });
 
-investigateButton.addEventListener('click', () => {
+const DISCOVERY_RADIUS = 7.5;
+const CLICK_RADIUS = 14;
+const toastEyebrow = document.querySelector<HTMLElement>('#toast-eyebrow')!;
+const toastTitle = document.querySelector<HTMLElement>('#toast-title')!;
+toastTitle.textContent = gameStory.firstDiscovery.title;
+
+const isCardOpen = () => !discoveryCard.classList.contains('hidden');
+const distanceToStation = () => Vector3.Distance(astronaut.position, station.position);
+
+function openCard() {
+  if (!gameStarted || isCardOpen()) return;
+  found = true;
+  keys.clear();
   discoveryToast.classList.add('hidden');
   discoveryCard.classList.remove('hidden');
+}
+
+function closeCard() {
+  if (!isCardOpen()) return;
+  discoveryCard.classList.add('hidden');
+  canvas.focus();
+}
+
+// Mostra o aviso sempre que o astronauta está perto do equipamento,
+// permitindo reabrir a ficha quantas vezes quiser.
+function updateDiscoveryToast() {
+  const near = gameStarted && !isCardOpen() && distanceToStation() < DISCOVERY_RADIUS;
+  if (near && found) {
+    toastEyebrow.textContent = 'FICHA DO ARQUIVO';
+    investigateButton.firstChild!.textContent = 'ABRIR FICHA ';
+  }
+  discoveryToast.classList.toggle('hidden', !near);
+}
+
+investigateButton.addEventListener('click', openCard);
+closeButton.addEventListener('click', closeCard);
+
+window.addEventListener('keydown', (event) => {
+  if ((event.key === 'e' || event.key === 'E' || event.key === 'Enter') && !isCardOpen() && distanceToStation() < DISCOVERY_RADIUS) {
+    if (event.key === 'Enter' && document.activeElement instanceof HTMLButtonElement) return;
+    openCard();
+  }
 });
 
-closeButton.addEventListener('click', () => discoveryCard.classList.add('hidden'));
+// Clicar ou tocar no equipamento também abre a ficha.
+scene.onPointerObservable.add((info) => {
+  if (info.type !== PointerEventTypes.POINTERTAP) return;
+  const mesh = info.pickInfo?.pickedMesh;
+  if (mesh && mesh.isDescendantOf(station) && distanceToStation() < CLICK_RADIUS) openCard();
+});
 
 scene.onBeforeRenderObservable.add(() => {
   earth.rotation.y += 0.0008;
@@ -437,10 +481,7 @@ scene.onBeforeRenderObservable.add(() => {
   } else {
     astronaut.position.y *= 0.82;
   }
-  if (!found && Vector3.Distance(astronaut.position, station.position) < 7.5) {
-    found = true;
-    discoveryToast.classList.remove('hidden');
-  }
+  updateDiscoveryToast();
 });
 
 engine.runRenderLoop(() => scene.render());
