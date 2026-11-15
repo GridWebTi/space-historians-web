@@ -165,7 +165,7 @@ button.route-item:hover strong { color: #73dcb0; }
 /* Simulações */
 .sim { position: relative; margin: 4px 0 14px; padding: 14px; border: 1px dashed rgba(255,157,76,.45); border-radius: 12px; background: rgba(255,157,76,.04); }
 .sim-tag { position: absolute; top: -10px; right: 12px; padding: 2px 8px; border-radius: 999px; background: #11152f; color: #ffb060; font-size: 10px; font-weight: 900; letter-spacing: .14em; }
-.sim-svg { display: block; width: 100%; max-height: 210px; }
+.sim-svg { display: block; width: 100%; max-height: 300px; }
 .sim-svg .sim-label { fill: #b3bad3; font: 700 11px 'Nunito Sans', sans-serif; }
 .sim-svg .sim-label.hot { fill: #ffb060; }
 .sim-svg .trace { fill: none; stroke: #8f98bf; stroke-width: 1.6; transition: stroke .3s; }
