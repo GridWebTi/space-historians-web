@@ -44,15 +44,29 @@ kbd { display: grid; place-items: center; border: 1px solid rgba(255,255,255,.25
 kbd:first-child { grid-column: 2; }
 .controls p { display: flex; flex-direction: column; margin: 0; color: #9098b8; font-size: 9px; }
 .controls strong { color: #fff; font-size: 9px; letter-spacing: .12em; }
-.asset-credit { position: absolute; z-index: 3; right: 36px; bottom: 22px; margin: 0; color: rgba(206,211,233,.52); font-size: 7px; font-weight: 800; letter-spacing: .15em; pointer-events: none; }
+.asset-credit { position: absolute; z-index: 3; right: 36px; bottom: 22px; margin: 0; color: rgba(206,211,233,.52); font-size: 9px; font-weight: 800; letter-spacing: .15em; pointer-events: none; }
 .intro { position: absolute; z-index: 10; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 70% 35%, rgba(31,49,111,.2), rgba(5,7,25,.8)); backdrop-filter: blur(3px); transition: opacity .55s ease, visibility .55s; }
 .intro::before, .intro::after { content: ''; position: absolute; width: 280px; height: 1px; top: 50%; background: linear-gradient(90deg, transparent, rgba(255,159,83,.5)); }
 .intro::before { right: calc(50% + 310px); }
 .intro::after { left: calc(50% + 310px); transform: scaleX(-1); }
 .intro-content { width: min(780px, 90vw); text-align: center; }
 .intro-content h2 { margin: 0 0 18px; font: 700 clamp(44px, 6vw, 76px)/.87 'Barlow Condensed'; letter-spacing: -.035em; text-transform: uppercase; text-shadow: 0 8px 40px rgba(0,0,0,.45); }
-.prologue-pages { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 auto 14px; text-align: left; }
-.prologue-pages p { margin: 0; padding: 14px; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; color: #c9cee0; background: rgba(9,12,37,.44); font-size: 12px; line-height: 1.5; }
+.intro-step.hidden { display: none; }
+.language-options { display: flex; gap: 12px; justify-content: center; margin: 26px 0 18px; }
+.language-options button { padding: 15px 28px; border: 1px solid rgba(255,255,255,.22); border-radius: 999px; color: #f7f4ec; background: rgba(255,255,255,.07); font-size: 13px; font-weight: 800; letter-spacing: .08em; transition: border-color .2s, background .2s, color .2s; }
+.language-options button:hover { border-color: #ff914f; color: #ffce8f; background: rgba(255,145,79,.14); }
+.intro-note { margin: 0; color: #8a93b8; font-size: 9px; font-weight: 800; letter-spacing: .14em; }
+#player-name { width: min(360px, 80%); margin: 24px 0 18px; padding: 15px 18px; border: 1px solid rgba(255,255,255,.22); border-radius: 12px; color: #fff; background: rgba(9,12,37,.6); font: 600 15px 'Nunito Sans', sans-serif; text-align: center; outline: none; }
+#player-name:focus { border-color: #ff914f; }
+#player-name::placeholder { color: #7f88ad; }
+.name-actions { display: flex; gap: 12px; justify-content: center; align-items: center; }
+#name-continue { padding: 15px 24px; border-radius: 999px; color: #111327; background: linear-gradient(135deg, #ffd078, #ff8446); box-shadow: 0 10px 30px rgba(255,102,47,.28); font-size: 11px; font-weight: 900; letter-spacing: .12em; }
+.ghost { padding: 14px 20px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: #aab1d0; background: transparent; font-size: 11px; font-weight: 800; letter-spacing: .1em; }
+.prologue-hook { width: min(560px, 92%); margin: 0 auto 20px; color: #c9cee0; font-size: 15px; line-height: 1.5; }
+.prologue-cards { display: flex; gap: 10px; justify-content: center; margin: 0 0 18px; }
+.prologue-cards div { display: flex; flex-direction: column; gap: 6px; align-items: center; min-width: 118px; padding: 14px 16px; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; background: rgba(9,12,37,.44); }
+.prologue-cards span { font-size: 22px; }
+.prologue-cards strong { color: #e8ebf7; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
 .prologue-mission { width: min(650px, 95%); margin: 0 auto 20px; color: #ffcc88; font-size: 13px; font-weight: 700; }
 button { border: 0; cursor: pointer; }
 #start-button, #investigate-button, #continue-button { border-radius: 999px; color: #111327; background: linear-gradient(135deg, #ffd078, #ff8446); box-shadow: 0 10px 30px rgba(255,102,47,.28); font-size: 11px; font-weight: 900; letter-spacing: .12em; }
@@ -116,7 +130,8 @@ dd { margin: 3px 0 0; font: 700 18px 'Barlow Condensed'; }
   .artifact-visual { min-height: 210px; }
   .artifact-copy { padding: 30px; }
   .artifact-copy h2 { font-size: 36px; }
-  .prologue-pages { grid-template-columns: 1fr; max-height: 38vh; overflow-y: auto; }
+  .prologue-cards { flex-direction: column; }
+  .language-options { flex-direction: column; align-items: center; }
   .intro-content h2 { font-size: 42px; }
   .story-tabs { grid-template-columns: 1fr; }
 }

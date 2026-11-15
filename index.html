@@ -34,11 +34,37 @@
 
       <section id="intro" class="intro">
         <div class="intro-content">
-          <p id="prologue-eyebrow" class="eyebrow"></p>
-          <h2 id="prologue-title"></h2>
-          <div id="prologue-pages" class="prologue-pages"></div>
-          <p id="prologue-mission" class="prologue-mission"></p>
-          <button id="start-button">ABRIR O MAPA LUNAR <span>→</span></button>
+          <div id="intro-language" class="intro-step">
+            <p class="eyebrow">ESCOLHA O IDIOMA · CHOOSE LANGUAGE · ELIGE IDIOMA</p>
+            <h2>SPACE<br /><em>HISTORIANS</em></h2>
+            <div class="language-options">
+              <button data-lang="pt-BR">Português</button>
+              <button data-lang="en-US">English</button>
+              <button data-lang="es-ES">Español</button>
+            </div>
+            <p class="intro-note">AS TRADUÇÕES CHEGAM EM BREVE · POR ENQUANTO, A AVENTURA É EM PORTUGUÊS</p>
+          </div>
+          <div id="intro-name" class="intro-step hidden">
+            <p class="eyebrow">IDENTIFICAÇÃO DA TRIPULAÇÃO</p>
+            <h2>COMO DEVEMOS<br /><em>TE CHAMAR?</em></h2>
+            <input id="player-name" maxlength="20" placeholder="Seu nome de exploração" autocomplete="off" />
+            <div class="name-actions">
+              <button id="name-continue">CONTINUAR <span>→</span></button>
+              <button id="name-skip" class="ghost">PULAR</button>
+            </div>
+          </div>
+          <div id="intro-prologue" class="intro-step hidden">
+            <p id="prologue-eyebrow" class="eyebrow"></p>
+            <h2 id="prologue-title"></h2>
+            <p class="prologue-hook">Doze equipamentos ficaram na Lua. Cada um guarda uma história — e o arquivo ainda está incompleto.</p>
+            <div class="prologue-cards">
+              <div><span>👁</span><strong>Observe</strong></div>
+              <div><span>🧪</span><strong>Experimente</strong></div>
+              <div><span>🔍</span><strong>Busque evidências</strong></div>
+            </div>
+            <p id="prologue-mission" class="prologue-mission"></p>
+            <button id="start-button">ABRIR O MAPA LUNAR <span>→</span></button>
+          </div>
         </div>
       </section>
 

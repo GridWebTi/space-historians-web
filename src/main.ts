@@ -14,6 +14,7 @@ import {
   StandardMaterial,
   TransformNode,
   Vector3,
+  VertexBuffer,
 } from '@babylonjs/core';
 import '@babylonjs/loaders/glTF';
 import './style.css';
@@ -70,7 +71,19 @@ const goldMat = material('gold', new Color3(0.72, 0.33, 0.08), new Color3(0.08, 
 const metalMat = material('metal', new Color3(0.22, 0.25, 0.32));
 const orangeMat = material('mission-orange', new Color3(1, 0.35, 0.08), new Color3(0.35, 0.045, 0));
 
-const ground = MeshBuilder.CreateGround('lunar-surface', { width: 70, height: 70, subdivisions: 2 }, scene);
+// Relevo suave nas bordas; o centro (raio ~14) fica plano para a jogabilidade.
+function terrainHeight(x: number, z: number) {
+  const fade = Math.min(1, Math.max(0, (Math.hypot(x, z) - 14) / 12));
+  return fade * (Math.sin(x * 0.18) * Math.cos(z * 0.16) * 0.9 + Math.sin(x * 0.05 + z * 0.08) * 0.6);
+}
+
+const ground = MeshBuilder.CreateGround('lunar-surface', { width: 70, height: 70, subdivisions: 96, updatable: true }, scene);
+const groundPositions = ground.getVerticesData(VertexBuffer.PositionKind)!;
+for (let i = 0; i < groundPositions.length; i += 3) {
+  groundPositions[i + 1] = terrainHeight(groundPositions[i], groundPositions[i + 2]);
+}
+ground.updateVerticesData(VertexBuffer.PositionKind, groundPositions);
+ground.createNormals(false);
 ground.material = moonMat;
 ground.receiveShadows = true;
 
@@ -93,7 +106,9 @@ function createCrater(x: number, z: number, radius: number, depth = 0.16) {
 for (let i = 0; i < 36; i += 1) {
   const radius = 0.12 + ((i * 13) % 9) / 18;
   const rock = MeshBuilder.CreateIcoSphere(`rock-${i}`, { radius, subdivisions: 1 }, scene);
-  rock.position.set(-27 + ((i * 11) % 54), radius * 0.58, -25 + ((i * 17) % 50));
+  const rockX = -27 + ((i * 11) % 54);
+  const rockZ = -25 + ((i * 17) % 50);
+  rock.position.set(rockX, terrainHeight(rockX, rockZ) + radius * 0.58, rockZ);
   rock.rotation.set(i * 0.31, i * 0.57, i * 0.19);
   rock.scaling.y = 0.55;
   rock.material = i % 3 === 0 ? darkDust : moonMat;
@@ -203,8 +218,31 @@ function buildLunarStation() {
 }
 
 const astronaut = buildAstronaut();
-const proceduralAstronautParts = astronaut.getChildren().slice();
 const station = buildLunarStation();
+
+// Membros usados no ciclo de caminhada (pivô no topo, para balançar como articulação).
+const walkLimbs = ['leg--0.7', 'leg-0.7', 'arm--0.7', 'arm-0.7'].map((name) => {
+  const limb = scene.getMeshByName(name) as Mesh;
+  limb.setPivotPoint(new Vector3(0, name.startsWith('leg') ? 0.6 : 0.62, 0));
+  return limb;
+});
+const [leftLeg, rightLeg, leftArm, rightArm] = walkLimbs;
+
+function animateWalk(time: number) {
+  const swing = Math.sin(time);
+  leftLeg.rotation.x = swing * 0.65;
+  rightLeg.rotation.x = -swing * 0.65;
+  leftArm.rotation.x = -swing * 0.5;
+  rightArm.rotation.x = swing * 0.5;
+  astronaut.position.y =
+    terrainHeight(astronaut.position.x, astronaut.position.z) + Math.abs(Math.cos(time)) * 0.12;
+}
+
+function relaxPose() {
+  for (const limb of walkLimbs) limb.rotation.x *= 0.8;
+  const baseY = terrainHeight(astronaut.position.x, astronaut.position.z);
+  astronaut.position.y = baseY + (astronaut.position.y - baseY) * 0.82;
+}
 
 async function importSceneAsset(
   fileName: string,
@@ -236,15 +274,7 @@ async function importSceneAsset(
 
 async function loadKenneySceneAssets() {
   try {
-    await importSceneAsset(
-      'astronaut-poly-google.glb',
-      'poly-google-astronaut',
-      astronaut,
-      1.9,
-      '/models/poly/',
-    );
-    for (const part of proceduralAstronautParts) part.setEnabled(false);
-
+    // Astronauta procedural mantido: o modelo Poly não tem esqueleto, então não dá para animar a caminhada.
     const environmentAssets = [
       { file: 'crater-large.glb', name: 'kenney-crater-a', position: new Vector3(-8, 0.01, 3), span: 4.2, rotation: 0.25 },
       { file: 'crater-large.glb', name: 'kenney-crater-b', position: new Vector3(10, 0.01, -11), span: 3.1, rotation: -0.4 },
@@ -321,7 +351,6 @@ const investigateButton = document.querySelector<HTMLButtonElement>('#investigat
 const closeButton = document.querySelector<HTMLButtonElement>('#continue-button')!;
 const prologueEyebrow = document.querySelector<HTMLElement>('#prologue-eyebrow')!;
 const prologueTitle = document.querySelector<HTMLElement>('#prologue-title')!;
-const prologuePages = document.querySelector<HTMLElement>('#prologue-pages')!;
 const prologueMission = document.querySelector<HTMLElement>('#prologue-mission')!;
 const encounterCopy = document.querySelector<HTMLElement>('#encounter-copy')!;
 const storyTabs = document.querySelector<HTMLElement>('#story-tabs')!;
@@ -333,7 +362,6 @@ const completedSteps = new Set<string>();
 
 prologueEyebrow.textContent = gameStory.prologue.eyebrow;
 prologueTitle.innerHTML = `As histórias que<br /><em>ficaram na Lua.</em>`;
-prologuePages.innerHTML = gameStory.prologue.paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join('');
 prologueMission.textContent = gameStory.prologue.mission;
 encounterCopy.innerHTML = gameStory.firstDiscovery.encounter.map((paragraph) => `<p>${paragraph}</p>`).join('');
 
@@ -383,6 +411,43 @@ gameStory.firstDiscovery.steps.forEach((step) => {
   storyTabs.appendChild(tab);
 });
 
+// Fluxo da tela inicial: idioma → nome (opcional) → prólogo.
+const languageStep = document.querySelector<HTMLElement>('#intro-language')!;
+const nameStep = document.querySelector<HTMLElement>('#intro-name')!;
+const prologueStep = document.querySelector<HTMLElement>('#intro-prologue')!;
+const nameInput = document.querySelector<HTMLInputElement>('#player-name')!;
+let playerName = '';
+
+languageStep.querySelectorAll<HTMLButtonElement>('[data-lang]').forEach((button) => {
+  button.addEventListener('click', () => {
+    localStorage.setItem('space-historians-language', button.dataset.lang!);
+    document.documentElement.lang = button.dataset.lang!;
+    languageStep.classList.add('hidden');
+    nameStep.classList.remove('hidden');
+    nameInput.focus();
+  });
+});
+
+function confirmName() {
+  playerName = nameInput.value.trim().slice(0, 20);
+  if (playerName) {
+    document.querySelector<HTMLElement>('#discovery-toast .eyebrow')!.textContent =
+      `OBJETO ENCONTRADO · ${playerName.toUpperCase()}`;
+  }
+  nameStep.classList.add('hidden');
+  prologueStep.classList.remove('hidden');
+}
+
+document.querySelector<HTMLButtonElement>('#name-continue')!.addEventListener('click', confirmName);
+document.querySelector<HTMLButtonElement>('#name-skip')!.addEventListener('click', () => {
+  nameInput.value = '';
+  confirmName();
+});
+nameInput.addEventListener('keydown', (event) => {
+  event.stopPropagation();
+  if (event.key === 'Enter') confirmName();
+});
+
 startButton.addEventListener('click', () => {
   intro.classList.add('hidden');
   gameStarted = true;
@@ -401,22 +466,25 @@ scene.onBeforeRenderObservable.add(() => {
   discoveryRing.rotation.y += 0.012;
   discoveryRing.scaling.setAll(1 + Math.sin(performance.now() / 500) * 0.04);
   if (!gameStarted || !discoveryCard.classList.contains('hidden')) return;
-  const direction = new Vector3(
-    (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0),
-    0,
-    (keys.has('s') || keys.has('arrowdown') ? 1 : 0) - (keys.has('w') || keys.has('arrowup') ? 1 : 0),
-  );
+  const strafe = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0);
+  const advance = (keys.has('w') || keys.has('arrowup') ? 1 : 0) - (keys.has('s') || keys.has('arrowdown') ? 1 : 0);
+  // Movimento relativo à câmera: W sempre anda para onde a câmera olha, mesmo depois de girá-la.
+  const forward = camera.getForwardRay().direction;
+  forward.y = 0;
+  forward.normalize();
+  const right = Vector3.Cross(Vector3.Up(), forward).normalize();
+  const direction = right.scale(strafe).add(forward.scale(advance));
   if (direction.lengthSquared() > 0) {
     direction.normalize();
     astronaut.position.addInPlace(direction.scale(0.075));
-    astronaut.position.y = Math.abs(Math.sin(performance.now() / 115)) * 0.055;
     astronaut.position.x = Math.max(-25, Math.min(25, astronaut.position.x));
     astronaut.position.z = Math.max(-25, Math.min(25, astronaut.position.z));
-    // O modelo Poly considera o eixo frontal oposto ao usado pela movimentação.
+    // O visor do astronauta aponta para -Z, por isso a meia-volta.
     astronaut.rotation.y = Math.atan2(direction.x, direction.z) + Math.PI;
+    animateWalk(performance.now() / 130);
     camera.target = Vector3.Lerp(camera.target, astronaut.position.add(new Vector3(0, 1.5, 0)), 0.045);
   } else {
-    astronaut.position.y *= 0.82;
+    relaxPose();
   }
   if (!found && Vector3.Distance(astronaut.position, station.position) < 7.5) {
     found = true;
