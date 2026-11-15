@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Nunito+Sans:wght@400;600;700;800&display=swap');
 
-:root { font-family: 'Nunito Sans', system-ui, sans-serif; color: #f7f4ec; background: #07091d; font-synthesis: none; }
+:root { color-scheme: dark; font-family: 'Nunito Sans', system-ui, sans-serif; color: #f7f4ec; background: #07091d; font-synthesis: none; }
 * { box-sizing: border-box; }
 body { margin: 0; overflow: hidden; }
 button { font: inherit; }
@@ -147,3 +147,75 @@ html.touch .discovery-toast { bottom: 196px; }
 .no-webgl h2 { margin: 0 0 14px; font: 700 34px/1 'Barlow Condensed'; text-transform: uppercase; }
 .no-webgl p:not(.eyebrow) { margin: 0 0 12px; color: #c9cee0; font-size: 16px; line-height: 1.55; }
 .no-webgl .no-webgl-small { color: #9098b8 !important; font-size: 13px !important; }
+
+/* Aviso de proximidade: equipamento bloqueado */
+.toast-note { margin: 4px 0 0; color: #ffc277; font-size: 14px; font-weight: 700; }
+.toast-note:empty { display: none; }
+#investigate-button.is-hidden { display: none; }
+
+/* Rota: fichas concluídas podem ser relidas */
+button.route-item { width: 100%; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; font: inherit; }
+button.route-item:hover strong { color: #73dcb0; }
+
+/* Fato e ficção */
+.facts { margin: -14px 0 24px; padding: 12px 14px; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; background: rgba(255,255,255,.03); }
+.facts summary { color: #ffb060; font-size: 13px; font-weight: 800; letter-spacing: .04em; cursor: pointer; }
+.facts p { margin: 10px 0 0; color: #c3c8dc; font-size: 14px; line-height: 1.5; }
+
+/* Simulações */
+.sim { position: relative; margin: 4px 0 14px; padding: 14px; border: 1px dashed rgba(255,157,76,.45); border-radius: 12px; background: rgba(255,157,76,.04); }
+.sim-tag { position: absolute; top: -10px; right: 12px; padding: 2px 8px; border-radius: 999px; background: #11152f; color: #ffb060; font-size: 10px; font-weight: 900; letter-spacing: .14em; }
+.sim-svg { display: block; width: 100%; max-height: 210px; }
+.sim-svg .sim-label { fill: #b3bad3; font: 700 11px 'Nunito Sans', sans-serif; }
+.sim-svg .sim-label.hot { fill: #ffb060; }
+.sim-svg .trace { fill: none; stroke: #8f98bf; stroke-width: 1.6; transition: stroke .3s; }
+.sim-svg .trace.hot { stroke: #ff9d4c; }
+.sim-svg .soil { fill: #4a4560; }
+.sim-svg .soil.deep { fill: #3b3750; }
+.sim-svg .layer { fill: none; stroke: rgba(255,255,255,.25); stroke-dasharray: 4 4; }
+.sim-svg .arrow-down { stroke: #73dcb0; stroke-width: 2; marker-end: none; }
+.sim-svg .ripple { fill: none; stroke: #ffd078; stroke-width: 2; }
+.sim-svg .probe { stroke: #cfd5ea; stroke-width: 3; }
+.sim-svg .sensor { fill: #73dcb0; }
+.sim-svg .reading, .sim-svg .timer { fill: #ffd078; font: 800 15px 'Nunito Sans', sans-serif; }
+.sim-svg .route { fill: none; stroke: rgba(255,255,255,.35); stroke-width: 3; stroke-dasharray: 6 6; }
+.sim-svg .stop { fill: #2b2f52; stroke: #8f98bf; stroke-width: 2; transition: fill .3s; }
+.sim-svg .stop.visited { fill: #73dcb0; stroke: #73dcb0; }
+.sim-svg .beam { stroke: #ff5a3c; stroke-width: 3; }
+.sim-svg .beam.back { stroke: #ffd078; }
+.sim-svg .missing { fill: none; stroke: #ff9d4c; stroke-width: 2; stroke-dasharray: 3 3; }
+.sim-svg .callout { fill: none; stroke: #ffd078; stroke-width: 2; }
+.sim-svg .footprint { fill: #2b2f52; }
+.sim-controls { display: flex; justify-content: center; margin-top: 10px; }
+.sim-action { min-height: 44px; padding: 10px 18px; border-radius: 999px; color: #111327; background: linear-gradient(135deg, #ffd078, #ff8446); font-size: 14px; font-weight: 900; }
+.sim-action:disabled { opacity: .55; cursor: default; }
+.story-options.waiting { opacity: .45; }
+
+/* Associar */
+.match-list { display: grid; gap: 10px; }
+.match-row { padding: 10px 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; }
+.match-row.wrong { border-color: #ffb36b; background: rgba(255,160,80,.08); }
+.match-row.right { border-color: rgba(115,220,176,.5); }
+.match-item { display: block; margin-bottom: 8px; color: #fff; font-size: 15px; font-weight: 800; }
+.match-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.match-choices button { min-height: 40px; padding: 8px 12px; border: 1px solid rgba(255,255,255,.18); border-radius: 9px; color: #e6e9f4; background: rgba(255,255,255,.06); font-size: 14px; }
+.match-choices button.selected { border-color: #73dcb0; background: rgba(66,205,145,.16); color: #fff; }
+.match-choices button:disabled { cursor: default; }
+.match-choices button:disabled:not(.selected) { opacity: .4; }
+
+/* Ordenar */
+.order-slots { display: grid; gap: 6px; margin: 0 0 10px; padding-left: 26px; color: #8f98bf; font-size: 15px; }
+.order-slots li.filled { color: #73dcb0; font-weight: 800; }
+
+/* Epílogo */
+.epilogue-card { width: min(760px, 95vw); max-height: 92vh; overflow-y: auto; padding: 34px 38px; border-radius: 26px; text-align: center; }
+.epilogue-card h2 { margin: 0 0 16px; font: 700 clamp(36px, 5vw, 56px)/.92 'Barlow Condensed'; text-transform: uppercase; }
+#epilogue-text p { margin: 0 0 10px; color: #cdd2e3; font-size: 16px; line-height: 1.55; }
+.epilogue-stats { justify-content: center; margin: 22px 0; }
+.epilogue-prompt { margin: 0 0 10px; color: #ffcc88; font-size: 15px; font-weight: 800; }
+.epilogue-favorites { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 18px; }
+.epilogue-favorites button { min-height: 40px; padding: 8px 12px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; color: #dfe3f1; background: rgba(255,255,255,.05); font-size: 13px; }
+.epilogue-favorites button b { color: #ff9d4c; }
+.epilogue-favorites button.selected { border-color: #ffd078; background: rgba(255,208,120,.18); color: #fff; }
+.epilogue-closing { margin: 0 0 20px; color: #fff; font-size: 17px; font-weight: 800; }
+.primary-button { min-height: 48px; padding: 14px 22px; border-radius: 999px; color: #111327; background: linear-gradient(135deg, #ffd078, #ff8446); box-shadow: 0 10px 30px rgba(255,102,47,.28); font-size: 13px; font-weight: 900; letter-spacing: .12em; }
