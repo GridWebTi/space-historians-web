@@ -84,7 +84,7 @@ const pt = {
   noWebglEyebrow: 'NÃO FOI POSSÍVEL ABRIR O MAPA LUNAR',
   noWebglTitle: 'O 3D está desligado neste navegador',
   noWebglText: 'Para explorar a Lua, peça a um adulto para ativar a <strong>aceleração de hardware</strong> nas configurações do navegador (Chrome ou Edge: Configurações → Sistema) e recarregue a página.',
-  noWebglSmall: 'Se estiver em um computador da escola, o 3D pode ter sido bloqueado pela rede. Tente outro navegador ou dispositivo.',
+  noWebglSmall: 'Este navegador não ofereceu WebGL nem WebGPU. Em computadores da escola, o 3D pode estar bloqueado pela rede ou pelo administrador: tente outro navegador ou dispositivo.',
 };
 
 export type UiText = typeof pt;
@@ -160,7 +160,7 @@ const en: UiText = {
   noWebglEyebrow: 'COULD NOT OPEN THE LUNAR MAP',
   noWebglTitle: '3D is turned off in this browser',
   noWebglText: 'To explore the Moon, ask an adult to turn on <strong>hardware acceleration</strong> in the browser settings (Chrome or Edge: Settings → System) and reload the page.',
-  noWebglSmall: 'On a school computer, 3D may be blocked by the network. Try another browser or device.',
+  noWebglSmall: 'This browser offered neither WebGL nor WebGPU. On school computers, 3D may be blocked by the network or an administrator: try another browser or device.',
 };
 
 const TEXTS: Record<Lang, UiText> = { pt, en };

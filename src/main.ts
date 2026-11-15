@@ -14,6 +14,8 @@ import {
   StandardMaterial,
   TransformNode,
   Vector3,
+  WebGPUEngine,
+  type AbstractEngine,
 } from '@babylonjs/core';
 import '@babylonjs/loaders/glTF';
 import './style.css';
@@ -29,7 +31,8 @@ const canvas = document.querySelector<HTMLCanvasElement>('#game-canvas')!;
 const languagePreference = preferredLang();
 setLang(languagePreference.lang);
 
-// Sem WebGL o jogo não roda: mostra uma orientação em vez de uma tela quebrada.
+// Motor 3D: WebGL quando disponível; se o navegador bloquear o WebGL, tenta WebGPU.
+// Sem nenhum dos dois, mostra uma orientação em vez de uma tela quebrada.
 function hasWebGL() {
   try {
     const probe = document.createElement('canvas');
@@ -38,12 +41,34 @@ function hasWebGL() {
     return false;
   }
 }
-if (!hasWebGL()) {
+type Renderer = 'webgl' | 'webgpu';
+
+async function createEngine(): Promise<{ engine: AbstractEngine; renderer: Renderer } | null> {
+  // ?render=webgpu força o WebGPU (para testes).
+  const forceWebGPU = new URLSearchParams(location.search).get('render') === 'webgpu';
+  if (!forceWebGPU && hasWebGL()) {
+    return { engine: new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true }), renderer: 'webgl' };
+  }
+  try {
+    if (await WebGPUEngine.IsSupportedAsync) {
+      const webgpu = new WebGPUEngine(canvas, { antialias: true, stencil: true });
+      await webgpu.initAsync();
+      return { engine: webgpu, renderer: 'webgpu' };
+    }
+  } catch (error) {
+    console.warn('WebGPU indisponível.', error);
+  }
+  return null;
+}
+
+const created = await createEngine();
+if (!created) {
   document.querySelector<HTMLElement>('#intro')?.classList.add('hidden');
   document.querySelector<HTMLElement>('#no-webgl')!.hidden = false;
-  throw new Error('WebGL indisponível: o jogo 3D não pode ser iniciado.');
+  throw new Error('WebGL e WebGPU indisponíveis: o jogo 3D não pode ser iniciado.');
 }
-const engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+const engine = created.engine;
+document.documentElement.dataset.renderer = created.renderer;
 const scene = new Scene(engine);
 scene.clearColor = new Color4(0.018, 0.022, 0.09, 1);
 scene.fogMode = Scene.FOGMODE_EXP2;
