@@ -1,5 +1,5 @@
 // Rolagem das modais: em cada tamanho de tela, o fim da abertura, da ficha (abas 1 e 3) e do epílogo
-// precisa ser alcançável, e a roda do mouse precisa rolar a ficha.
+// precisa ser alcançável, a roda do mouse precisa rolar a ficha e nada pode rolar para o lado.
 // Uso: node roteiro-rolagem.mjs [prefixo de saída] [endereço]
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
@@ -33,6 +33,11 @@ for (const [w, h] of VIEWPORTS) {
     await page.evaluate((i) => document.querySelectorAll('.story-tabs button')[i]?.click(), t); await page.waitForTimeout(300);
     res[`aba${t + 1}`] = await page.evaluate(reach, '#continue-button');
   }
+  // Nenhuma área da ficha pode rolar para o lado.
+  res.horizontal = await page.evaluate(() => {
+    const bad = [document.querySelector('#discovery-card'), ...document.querySelectorAll('#discovery-card *')].filter((n) => /(auto|scroll)/.test(getComputedStyle(n).overflowX) && n.scrollWidth > n.clientWidth + 1);
+    return bad.length ? `rola para o lado: ${bad.map((n) => n.id || n.className).join(', ')}` : 'ok';
+  });
   // Roda do mouse de verdade sobre a ficha.
   res.roda = await (async () => {
     const box = await page.evaluate(() => { const c = document.querySelector('.artifact-card'); c.scrollTop = 0; c.querySelector('.artifact-copy').scrollTop = 0; const r = c.getBoundingClientRect(); return { x: r.right - 60, y: r.top + r.height / 2 }; });
