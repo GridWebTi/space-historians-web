@@ -52,6 +52,19 @@ npm run build
 
 Os arquivos publicados serão criados na pasta `dist`.
 
+## Publicar no Netlify
+
+O arquivo [`netlify.toml`](netlify.toml) já traz toda a configuração: comando `npm run build`, pasta `dist`, Node 22 e cache longo para os arquivos gerados e os modelos 3D.
+
+Para publicar pela primeira vez (só uma vez):
+
+1. Entre em [app.netlify.com](https://app.netlify.com) com a conta do GitHub.
+2. **Add new site → Import an existing project → GitHub** e escolha o repositório `space-historians-web`.
+3. Em **Branch to deploy**, deixe `main`. Os outros campos são preenchidos pelo `netlify.toml`.
+4. Clique em **Deploy**. O endereço fica como `https://<nome>.netlify.app`; o nome pode ser trocado em **Site configuration → Change site name**.
+
+Depois disso, cada push na `main` publica uma nova versão, e cada pull request ganha um link de prévia.
+
 ## Tecnologias
 
 - TypeScript
