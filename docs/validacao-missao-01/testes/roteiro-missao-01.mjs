@@ -165,6 +165,9 @@ async function desktop() {
   check('aba concluída reaberta mostra acerto', await page.evaluate(() => !!document.querySelector('#story-panel .correct') && document.querySelector('.activity-feedback').classList.contains('success')));
 
   await tabs.nth(1).click();
+  check('aba 2: respostas aguardam a simulação', await page.locator('.story-options.waiting').count() === 1);
+  await page.locator('.sim-action').click();
+  await page.waitForTimeout(1900);
   await page.locator('[data-option="1"]').click();
   check('acerto aba 2 = 30', (await score()).startsWith('30 /'));
   await tabs.nth(2).click();
@@ -207,7 +210,7 @@ async function desktop() {
   // Progresso salvo após recarregar
   await page.goto(BASE);
   await page.waitForFunction(() => document.documentElement.dataset.nasaModel);
-  check('progresso salvo após recarregar', (await page.textContent('#archive-count')) === '01' && (await score()).startsWith('60 /'));
+  check('progresso salvo após recarregar', (await page.textContent('#archive-count')) === '01' && await page.evaluate(() => document.querySelector('#route-01').classList.contains('done')));
 
   check('sem erros no console', errors.filter((e) => !/favicon/.test(e)).length === 0, errors.join(' | '));
   await ctx.close();
