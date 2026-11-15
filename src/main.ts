@@ -17,11 +17,17 @@ import {
 } from '@babylonjs/core';
 import '@babylonjs/loaders/glTF';
 import './style.css';
-import { gameStory, type Discovery, type StoryStep } from './story-data';
+import { gameStory, localizeStory, type Discovery, type GameStory, type StoryStep } from './story-data';
+import { storyEn } from './story-data.en';
+import { preferredLang, setLang, ui, type Lang } from './i18n';
 import { renderActivity } from './activities';
 import { buildEquipment, buildLabel, type ModelKit } from './models';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game-canvas')!;
+
+// Idioma: aplicado já no início (inclusive na mensagem sem WebGL); confirmado na tela de abertura.
+const languagePreference = preferredLang();
+setLang(languagePreference.lang);
 
 // Sem WebGL o jogo não roda: mostra uma orientação em vez de uma tela quebrada.
 function hasWebGL() {
@@ -267,7 +273,9 @@ const kit: ModelKit = {
   materials: { gold: goldMat, metal: metalMat, orange: orangeMat, dark: darkDust, moon: moonMat, white: whiteSuit },
   addObstacle,
 };
-const discoveries = gameStory.discoveries;
+// História no idioma escolhido (as posições e respostas são as mesmas nos dois idiomas).
+let story: GameStory = gameStory;
+let discoveries = story.discoveries;
 const equipment = discoveries.map((discovery) => buildEquipment(kit, discovery));
 const station = equipment[0];
 const landingSite = new TransformNode('apollo-12-landing-site', scene);
@@ -382,7 +390,9 @@ const rings = discoveries.map((discovery) => {
   ring.isPickable = false;
   return ring;
 });
-const labels = discoveries.map((discovery) => buildLabel(kit, `${discovery.number} · ${discovery.title}`, new Vector3(discovery.position.x, 0, discovery.position.z), discovery.kind === 'lm-descent' ? 4.6 : 3.8));
+// Placas com o nome de cada equipamento, recriadas quando o idioma muda.
+const buildLabels = () => discoveries.map((discovery) => buildLabel(kit, `${discovery.number} · ${discovery.title}`, new Vector3(discovery.position.x, 0, discovery.position.z), discovery.kind === 'lm-descent' ? 4.6 : 3.8));
+let labels = buildLabels();
 
 // Seta no chão apontando para a próxima descoberta.
 const guideArrow = MeshBuilder.CreateCylinder('seta-guia', { diameterTop: 0, diameterBottom: 0.9, height: 1.3, tessellation: 3 }, scene);
@@ -493,10 +503,12 @@ const currentIndex = () => { const index = discoveries.findIndex((discovery) => 
 const isUnlocked = (index: number) => index <= currentIndex();
 const allComplete = () => currentIndex() >= discoveries.length;
 
-prologueEyebrow.textContent = gameStory.prologue.eyebrow;
-prologueTitle.innerHTML = `As histórias que<br /><em>ficaram na Lua.</em>`;
-prologuePages.innerHTML = gameStory.prologue.paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join('');
-prologueMission.textContent = gameStory.prologue.mission;
+function renderPrologue() {
+  prologueEyebrow.textContent = story.prologue.eyebrow;
+  prologueTitle.innerHTML = ui().prologueTitle;
+  prologuePages.innerHTML = story.prologue.paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join('');
+  prologueMission.textContent = story.prologue.mission;
+}
 
 const TOTAL_DISCOVERIES = discoveries.length;
 const STORAGE_KEY = 'space-historians:progresso:v1';
@@ -544,18 +556,18 @@ function updateHud() {
   hud.archiveProgress.style.width = `${(done / TOTAL_DISCOVERIES) * 100}%`;
   const objectiveBox = hud.objective.parentElement!.parentElement!;
   if (allComplete()) {
-    hud.missionEyebrow.textContent = 'ARQUIVO LUNAR · 12 DE 12';
-    hud.missionTitle.innerHTML = headline('Arquivo lunar concluído');
-    hud.missionTeaser.textContent = gameStory.epilogue.closing;
-    hud.objective.textContent = `Arquivo completo · ${totalScore()} pontos`;
+    hud.missionEyebrow.textContent = ui().archiveDoneEyebrow;
+    hud.missionTitle.innerHTML = headline(ui().archiveDoneTitle);
+    hud.missionTeaser.textContent = story.epilogue.closing;
+    hud.objective.textContent = ui().archiveDoneObjective(totalScore());
     objectiveBox.classList.add('done');
   } else {
     const current = discoveries[index];
-    hud.missionEyebrow.textContent = `MISSÃO ${current.number} · ${current.mission.toUpperCase()}`;
+    hud.missionEyebrow.textContent = ui().missionEyebrow(current.number, current.mission);
     hud.missionTitle.innerHTML = headline(current.subtitle);
     hud.missionTeaser.textContent = current.teaser;
     hud.objective.textContent = justCompleted
-      ? `Ficha ${justCompleted.number} concluída · próxima: ${current.title}`
+      ? ui().justCompleted(justCompleted.number, current.title)
       : current.objective;
     objectiveBox.classList.toggle('done', Boolean(justCompleted));
   }
@@ -574,10 +586,10 @@ function renderRoute() {
     const item = document.createElement(complete ? 'button' : 'div');
     item.id = `route-${discovery.number}`;
     item.className = `route-item${complete ? ' done' : unlocked ? ' active' : ''}`;
-    const status = complete ? 'concluído ✓' : unlocked ? 'atual' : 'bloqueado';
+    const status = complete ? ui().routeDone : unlocked ? ui().routeCurrent : ui().routeLocked;
     item.innerHTML = `<b>${discovery.number}</b><div><strong>${discovery.route.label}</strong><span>${discovery.route.detail} · ${status}</span></div>`;
     if (complete) {
-      item.title = 'Reler esta ficha';
+      item.title = ui().rereadCard;
       item.addEventListener('click', () => openCard(discovery));
     }
     hud.route.appendChild(item);
@@ -594,7 +606,7 @@ function updateMarkers() {
 const ICONS: Record<Discovery['kind'], string> = { alsep: '⌁', surveyor: '△', rover: '⊚', reflector: '▦', 'lm-descent': '⌂', psep: '◫' };
 
 function updateCardScore(discovery: Discovery) {
-  knowledgeScore.textContent = `${scoreOf(discovery)} / ${maxScore(discovery)} PONTOS`;
+  knowledgeScore.textContent = ui().points(scoreOf(discovery), maxScore(discovery));
   knowledgeScore.classList.toggle('complete', isComplete(discovery));
 }
 
@@ -602,7 +614,7 @@ function renderCard(discovery: Discovery) {
   card.number.textContent = discovery.number;
   card.icon.textContent = ICONS[discovery.kind];
   card.location.textContent = discovery.location.toUpperCase();
-  card.eyebrow.textContent = `DESCOBERTA ${discovery.number} DE ${String(TOTAL_DISCOVERIES).padStart(2, '0')}`;
+  card.eyebrow.textContent = ui().cardEyebrow(discovery.number, String(TOTAL_DISCOVERIES).padStart(2, '0'));
   card.title.textContent = discovery.title;
   card.subtitle.textContent = discovery.subtitle;
   card.mission.textContent = discovery.mission;
@@ -615,7 +627,7 @@ function renderCard(discovery: Discovery) {
   storyTabs.innerHTML = '';
   discovery.steps.forEach((step) => {
     const tab = document.createElement('button');
-    tab.innerHTML = `<span>${step.label}</span><small>+${step.reward}</small>`;
+    tab.innerHTML = `<span>${ui().tabs[step.id]}</span><small>+${step.reward}</small>`;
     tab.classList.toggle('complete', isStepDone(discovery, step));
     tab.addEventListener('click', () => openStoryStep(discovery, step, tab));
     storyTabs.appendChild(tab);
@@ -630,12 +642,12 @@ function openStoryStep(discovery: Discovery, step: StoryStep, tab: HTMLButtonEle
   storyPanel.classList.remove('hidden');
   const done = isStepDone(discovery, step);
   storyPanel.innerHTML = `
-    <p class="story-reward">${done ? '✓ ' : '+'}${step.reward} PONTOS</p>
+    <p class="story-reward">${ui().reward(done, step.reward)}</p>
     <h3>${step.title}</h3>
     ${step.paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join('')}`;
   renderActivity(storyPanel, step.activity, {
     solved: done,
-    successText: (earned) => (earned ? `${step.activity.success} +${step.reward} pontos.` : step.activity.success),
+    successText: (earned) => (earned ? `${step.activity.success} ${ui().earned(step.reward)}` : step.activity.success),
     onSolved: () => {
       if (isStepDone(discovery, step)) return;
       completedSteps.add(stepKey(discovery, step));
@@ -650,6 +662,42 @@ function openStoryStep(discovery: Discovery, step: StoryStep, tab: HTMLButtonEle
 
 loadProgress();
 updateHud();
+
+// Abertura: 1) escolha do idioma; 2) prólogo; 3) jogo. O idioma vale para toda a sessão.
+const languageStep = byId('language-step');
+const prologueStep = byId('prologue-step');
+const languageButtons = [...document.querySelectorAll<HTMLButtonElement>('.language-option')];
+
+function applyLanguage(lang: Lang) {
+  setLang(lang);
+  story = lang === 'en' ? localizeStory(storyEn) : gameStory;
+  discoveries = story.discoveries;
+  labels.forEach((label) => { label.material?.dispose(true, true); label.dispose(); });
+  labels = buildLabels();
+  renderPrologue();
+  updateHud();
+}
+
+function showLanguageStep() {
+  prologueStep.classList.add('step-hidden');
+  languageStep.classList.remove('step-hidden');
+  const suggested = languageButtons.find((button) => button.dataset.lang === languagePreference.lang) ?? languageButtons[0];
+  languageButtons.forEach((button) => button.classList.toggle('suggested', button === suggested));
+  suggested.focus({ preventScroll: true });
+}
+
+function showPrologueStep(lang: Lang) {
+  applyLanguage(lang);
+  languageStep.classList.add('step-hidden');
+  prologueStep.classList.remove('step-hidden');
+  startButton.focus({ preventScroll: true });
+}
+
+languageButtons.forEach((button) => button.addEventListener('click', () => showPrologueStep(button.dataset.lang as Lang)));
+byId('change-language').addEventListener('click', showLanguageStep);
+// ?lang=pt ou ?lang=en na URL pula a escolha (útil para links de apresentação).
+if (languagePreference.fromUrl) showPrologueStep(languagePreference.lang);
+else showLanguageStep();
 
 startButton.addEventListener('click', () => {
   intro.classList.add('hidden');
@@ -694,11 +742,11 @@ function closeCard() {
 }
 
 function showEpilogue() {
-  const text = gameStory.epilogue;
+  const text = story.epilogue;
   epilogue.eyebrow.textContent = text.eyebrow;
   epilogue.title.innerHTML = headline(text.title);
   epilogue.text.innerHTML = text.paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join('');
-  epilogue.score.textContent = `${totalScore()} de ${totalMaxScore} pontos`;
+  epilogue.score.textContent = ui().epilogueScore(totalScore(), totalMaxScore);
   epilogue.distinction.textContent = text.distinction;
   epilogue.prompt.textContent = text.favoritePrompt;
   epilogue.closing.textContent = text.closing;
@@ -743,13 +791,13 @@ function updateDiscoveryToast() {
   investigateButton.classList.toggle('is-hidden', !unlocked);
   if (!unlocked) {
     const next = discoveries[currentIndex()];
-    toastEyebrow.textContent = 'AINDA BLOQUEADO';
-    toastNote.textContent = `Conclua antes a ficha ${next.number}: ${next.title}.`;
+    toastEyebrow.textContent = ui().toastLocked;
+    toastNote.textContent = ui().toastLockedNote(next.number, next.title);
     return;
   }
   const opened = openedDiscoveries.has(discovery.number);
-  toastEyebrow.textContent = opened ? 'FICHA DO ARQUIVO' : 'OBJETO ENCONTRADO';
-  investigateButton.firstChild!.textContent = opened ? 'ABRIR FICHA ' : 'INVESTIGAR ';
+  toastEyebrow.textContent = opened ? ui().toastArchive : ui().toastFound;
+  investigateButton.firstChild!.textContent = opened ? ui().openCard : ui().investigate;
   toastNote.textContent = '';
 }
 
@@ -845,7 +893,8 @@ window.addEventListener('resize', () => engine.resize());
 // Gancho de depuração para testes automatizados (somente em desenvolvimento).
 if (import.meta.env.DEV) {
   (window as unknown as { __game: unknown }).__game = {
-    scene, camera, astronaut, station, landingSite, equipment, story: gameStory,
+    scene, camera, astronaut, station, landingSite, equipment,
+    get story() { return story; },
     /** Coloca o astronauta diante de um equipamento (índice 0–11). */
     teleport(index: number, distance = 5) {
       const target = discoveries[index].position;
