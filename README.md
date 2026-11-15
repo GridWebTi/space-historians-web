@@ -42,7 +42,7 @@ Na abertura, escolha **Português** ou **English**. Para abrir direto em um idio
 
 Para apagar o progresso salvo (testes e apresentações), abra o jogo com `?reiniciar` no final do endereço.
 
-O jogo precisa de WebGL. Se a aceleração de hardware estiver desligada no navegador, uma mensagem explica como ativá-la.
+O jogo usa **WebGL** e, se o navegador bloquear o WebGL, tenta **WebGPU** automaticamente. Se nenhum dos dois estiver disponível, uma mensagem explica como ativar a aceleração de hardware. Para testar o caminho WebGPU num navegador com WebGL, abra com `?render=webgpu`. O motor em uso fica em `document.documentElement.dataset.renderer` (`webgl` ou `webgpu`).
 
 ## Gerar versão de produção
 
