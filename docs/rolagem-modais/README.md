@@ -20,21 +20,29 @@ No celular deitado, a tela de abertura também ficava cortada: o conteúdo centr
 - **Celular em pé (até 780 px):** o cartão inteiro rola, com a imagem em cima e o texto embaixo, sem rolagem dentro de rolagem.
 - **Barra de rolagem visível**, fina e laranja, para mostrar que há mais conteúdo.
 - `overscroll-behavior: contain`: rolar a ficha até o fim não arrasta a página atrás.
+- **Sem rolagem lateral:** com `overflow-y: auto`, o navegador também liga a rolagem horizontal da modal, e o cartão (`95vw`) mais o espaçamento passava da largura em telas de até ~1140 px. O cartão passou a usar `100%` do espaço da modal, e a modal ganhou `overflow-x: hidden`. Esse problema foi encontrado ao testar a primeira versão da correção no Netlify.
 
 | Depois (1366×768) | Celular deitado (844×390) | Celular (390×844) |
 |---|---|---|
 | ![](capturas/02-depois-1366x768.jpg) | ![](capturas/03-depois-celular-deitado.jpg) | ![](capturas/04-depois-celular.jpg) |
 
+| Rolagem lateral (900×900): antes, barra embaixo | Depois |
+|---|---|
+| ![](capturas/05-antes-rolagem-lateral-900x900.jpg) | ![](capturas/06-depois-900x900.jpg) |
+
 ## Testes
 
 Roteiro: [`testes/roteiro-rolagem.mjs`](testes/roteiro-rolagem.mjs) · resultado: [`testes/resultados-rolagem.json`](testes/resultados-rolagem.json)
 
-Em cada tamanho de tela, o roteiro rola tudo o que é rolável e verifica se o último elemento fica visível (botão da abertura, botão "Continuar explorando" nas abas 1 e 3, botão do epílogo). Também confirma que a **roda do mouse** rola a ficha.
+Em cada tamanho de tela, o roteiro rola tudo o que é rolável e verifica se o último elemento fica visível (botão da abertura, botão "Continuar explorando" nas abas 1 e 3, botão do epílogo). Também confirma que a **roda do mouse** rola a ficha e que **nada rola para o lado**.
 
 | Tela | Antes | Depois |
 |---|---|---|
-| 1366×768, 1280×720, 1024×768, 900×900, 1366×600, 1024×600 | ❌ ficha cortada | ✅ |
+| 1366×768, 1280×720, 1366×600 | ❌ ficha cortada | ✅ |
+| 1024×768, 900×900, 1024×600 | ❌ ficha cortada e rolagem lateral | ✅ |
 | 844×390 (celular deitado) | ❌ ficha e abertura cortadas | ✅ |
 | 768×1024, 390×844 | ✅ | ✅ |
+
+O mesmo roteiro, adaptado para abrir a ficha pela rota de exploração, também rodou no site publicado no Netlify.
 
 Regressão: 12 missões no computador **72/72** e no tablet **71/71**.

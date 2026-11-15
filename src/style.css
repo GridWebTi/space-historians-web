@@ -65,9 +65,9 @@ button { border: 0; cursor: pointer; }
 #investigate-button { margin-left: auto; padding: 13px 18px; }
 /* Modais: o cartão nunca passa da altura da tela; o conteúdo que sobra rola por dentro.
    margin: auto centraliza sem cortar o topo quando a tela é baixa. */
-.modal { --modal-pad: clamp(10px, 3vh, 30px); position: absolute; z-index: 20; inset: 0; display: grid; overflow-y: auto; padding: var(--modal-pad); background: rgba(4,5,18,.78); backdrop-filter: blur(8px); }
+.modal { --modal-pad: clamp(10px, 3vh, 30px); position: absolute; z-index: 20; inset: 0; display: grid; overflow-x: hidden; overflow-y: auto; padding: var(--modal-pad); background: rgba(4,5,18,.78); backdrop-filter: blur(8px); }
 .modal > * { margin: auto; }
-.artifact-card { display: grid; grid-template-columns: .8fr 1.2fr; grid-template-rows: minmax(0, 1fr); width: min(1080px, 95vw); max-height: calc(100vh - 2 * var(--modal-pad)); max-height: calc(100dvh - 2 * var(--modal-pad)); overflow: hidden; border: 1px solid rgba(255,255,255,.16); border-radius: 26px; background: #111631; box-shadow: 0 35px 100px rgba(0,0,0,.55); }
+.artifact-card { display: grid; grid-template-columns: .8fr 1.2fr; grid-template-rows: minmax(0, 1fr); width: min(1080px, 100%); max-height: calc(100vh - 2 * var(--modal-pad)); max-height: calc(100dvh - 2 * var(--modal-pad)); overflow: hidden; border: 1px solid rgba(255,255,255,.16); border-radius: 26px; background: #111631; box-shadow: 0 35px 100px rgba(0,0,0,.55); }
 .artifact-visual { position: relative; display: grid; place-items: center; overflow: hidden; background: radial-gradient(circle at 50% 56%, #815238 0 10%, #30365d 36%, #11152f 70%); }
 .artifact-visual::after { content: ''; position: absolute; inset: 0; background: repeating-radial-gradient(ellipse at 50% 110%, transparent 0 26px, rgba(255,255,255,.035) 27px 28px); }
 .artifact-number { position: absolute; top: 20px; left: 24px; color: rgba(255,255,255,.08); font: 800 110px/1 'Barlow Condensed'; }
@@ -213,7 +213,7 @@ button.route-item:hover strong { color: #73dcb0; }
 .order-slots li.filled { color: #73dcb0; font-weight: 800; }
 
 /* Epílogo */
-.epilogue-card { width: min(760px, 95vw); max-height: calc(100vh - 2 * var(--modal-pad)); max-height: calc(100dvh - 2 * var(--modal-pad)); overflow-y: auto; overscroll-behavior: contain; padding: 34px 38px; border-radius: 26px; text-align: center; }
+.epilogue-card { width: min(760px, 100%); max-height: calc(100vh - 2 * var(--modal-pad)); max-height: calc(100dvh - 2 * var(--modal-pad)); overflow-y: auto; overscroll-behavior: contain; padding: 34px 38px; border-radius: 26px; text-align: center; }
 .epilogue-card h2 { margin: 0 0 16px; font: 700 clamp(36px, 5vw, 56px)/.92 'Barlow Condensed'; text-transform: uppercase; }
 #epilogue-text p { margin: 0 0 10px; color: #cdd2e3; font-size: 16px; line-height: 1.55; }
 .epilogue-stats { justify-content: center; margin: 22px 0; }
