@@ -23,6 +23,7 @@ const clickLoc = (locator) => (TOUCH ? locator.tap() : locator.click());
 
 await page.goto(`${BASE}?reiniciar`);
 await page.waitForFunction(() => document.documentElement.dataset.nasaModel && document.documentElement.dataset.kenneyAssets, null, { timeout: 60000 });
+await click(`.language-option[data-lang="${process.env.LANG_GAME ?? 'pt'}"]`);
 const story = await page.evaluate(() => window.__game.story);
 check('12 descobertas nos dados', story.discoveries.length === 12);
 await click('#start-button');
@@ -44,7 +45,7 @@ async function goTo(index) {
 // Bloqueio: a 02 não abre antes de concluir a 01
 await goTo(1);
 const locked = await toast();
-check('02 bloqueada antes de concluir a 01', locked.visible && locked.eyebrow.includes('BLOQUEADO') && !locked.button, JSON.stringify(locked));
+check('02 bloqueada antes de concluir a 01', locked.visible && /BLOQUEADO|LOCKED/.test(locked.eyebrow) && !locked.button, JSON.stringify(locked));
 if (!TOUCH) { await page.keyboard.press('e'); await page.waitForTimeout(200); check('tecla E não abre ficha bloqueada', !(await isOpen())); }
 await page.screenshot({ path: `${OUT}/01-bloqueada.png` });
 
@@ -71,7 +72,7 @@ async function solve(discovery, stepIndex, { tryWrong }) {
     if (tryWrong) {
       const wrong = activity.options.findIndex((_, i) => i !== activity.correct);
       await clickLoc(page.locator(`#story-panel [data-option="${wrong}"]`));
-      if (!(await feedback()).startsWith('Pista')) return 'erro sem pista';
+      if (!(await feedback()).match(/^(Pista|Clue)/)) return 'erro sem pista';
     }
     await clickLoc(page.locator(`#story-panel [data-option="${activity.correct}"]`));
   } else if (type === 'match') {
@@ -81,13 +82,13 @@ async function solve(discovery, stepIndex, { tryWrong }) {
         const answer = activity.pairs[(r + 1) % activity.pairs.length].answer;
         await clickLoc(rows.nth(r).locator(`button[data-answer="${answer}"]`));
       }
-      if (!(await feedback()).startsWith('Pista')) return 'associação errada sem pista';
+      if (!(await feedback()).match(/^(Pista|Clue)/)) return 'associação errada sem pista';
     }
     for (let r = 0; r < activity.pairs.length; r += 1) await clickLoc(rows.nth(r).locator(`button[data-answer="${activity.pairs[r].answer}"]`));
   } else if (type === 'order') {
     if (tryWrong) {
       await clickLoc(page.locator('#story-panel .order-pool button', { hasText: activity.sequence[1] }));
-      if (!(await feedback()).startsWith('Pista')) return 'ordem errada sem pista';
+      if (!(await feedback()).match(/^(Pista|Clue)/)) return 'ordem errada sem pista';
     }
     for (const label of activity.sequence) await clickLoc(page.locator('#story-panel .order-pool button', { hasText: label }));
   } else {

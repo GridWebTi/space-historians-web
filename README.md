@@ -16,6 +16,7 @@ Protótipo de jogo educativo 3D criado para o NASA Space Apps Challenge. Crianç
 - atividades de escolha, associação, ordenação e oito simulações identificadas como representação do jogo (`src/activities.ts`);
 - bloco "O que é fato e o que é ficção" em cada ficha;
 - progresso salvo no navegador.
+- **dois idiomas: português e inglês**, escolhidos na abertura (vale para a sessão inteira: interface, histórias, atividades, simulações e placas do mapa).
 
 ## Executar localmente
 
@@ -36,6 +37,8 @@ Abra o endereço exibido pelo Vite no navegador.
 | Girar a câmera | arrastar com o mouse | arrastar com o dedo |
 | Abrir a ficha | chegar perto + `E`, ou clicar no equipamento | tocar em "Investigar" ou no equipamento |
 | Fechar a ficha | `Esc`, clicar fora ou "Continuar explorando" | "Continuar explorando" |
+
+Na abertura, escolha **Português** ou **English**. Para abrir direto em um idioma (por exemplo, numa apresentação), use `?lang=pt` ou `?lang=en` no endereço.
 
 Para apagar o progresso salvo (testes e apresentações), abra o jogo com `?reiniciar` no final do endereço.
 
@@ -58,6 +61,12 @@ Os arquivos publicados serão criados na pasta `dist`.
 ## Conteúdo
 
 Os textos narrativos ficam centralizados em `src/story-data.ts`. Isso permite atualizar histórias e preparar traduções sem alterar a estrutura 3D.
+
+### Idiomas
+
+- `src/i18n.ts`: textos da interface (HUD, avisos, ficha, atividades, simulações) em português e inglês.
+- `src/story-data.en.ts`: as histórias em inglês. Contém **só textos**; ordem, posições, respostas certas e pontuação vêm de `src/story-data.ts`. As listas de opções, associações e etapas devem ter o mesmo tamanho e a mesma ordem do português (se não tiverem, o jogo avisa no console e usa o original).
+- Para incluir um novo idioma: crie outro arquivo como `story-data.en.ts`, adicione os textos em `i18n.ts` e um botão na tela de idioma.
 
 Cada descoberta define título, missão, ano, local, posição no mapa, tipo de equipamento, encontro, as três etapas (com a atividade de cada uma) e o bloco de fatos e ficção. Tipos de atividade disponíveis: `choice` (padrão), `match`, `order` e `simulation`.
 

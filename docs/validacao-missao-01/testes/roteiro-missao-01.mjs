@@ -78,6 +78,7 @@ async function desktop() {
   await page.waitForFunction(() => document.documentElement.dataset.nasaModel && document.documentElement.dataset.kenneyAssets, null, { timeout: 60000 });
   const ds = await page.evaluate(() => ({ ...document.documentElement.dataset }));
   check('modelos 3D carregados', ds.nasaModel === 'loaded' && ds.kenneyAssets === 'loaded', JSON.stringify(ds));
+  await page.click('.language-option[data-lang="pt"]');
   check('prólogo preenchido', await page.evaluate(() => document.querySelector('#prologue-pages').textContent.length > 50));
   await page.screenshot({ path: `${OUT}/d01-intro.png` });
 
@@ -225,6 +226,7 @@ async function tablet(label, viewport) {
   await page.goto(`${BASE}?reiniciar`);
   await page.waitForFunction(() => document.documentElement.dataset.nasaModel, null, { timeout: 60000 });
   await page.screenshot({ path: `${OUT}/t-${label}-01-intro.png` });
+  await page.tap('.language-option[data-lang="pt"]');
   await page.tap('#start-button');
   await page.waitForTimeout(600);
   const joy = page.locator('#joystick');
