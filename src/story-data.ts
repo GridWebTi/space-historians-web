@@ -998,3 +998,95 @@ export const gameStory = {
     closing: 'Você não trouxe nenhum objeto de volta. Trouxe maneiras de compreender suas histórias.',
   },
 };
+
+// ---------------------------------------------------------------------------
+// Tradução: outros idiomas fornecem só os textos; a estrutura vem daqui.
+// ---------------------------------------------------------------------------
+
+export type GameStory = typeof gameStory;
+
+export type ActivityText = {
+  prompt: string;
+  success: string;
+  hint?: string;
+  options?: string[];
+  pairs?: { item: string; answer: string }[];
+  sequence?: string[];
+  /** Nomes das paradas do rover (simulação rover-drive). */
+  stops?: string[];
+};
+
+export type DiscoveryText = {
+  title: string;
+  subtitle: string;
+  location: string;
+  route: { label: string; detail: string };
+  objective: string;
+  teaser: string;
+  encounter: string[];
+  steps: { title: string; paragraphs: string[]; activity: ActivityText }[];
+  facts: string;
+  fiction: string;
+};
+
+export type StoryText = {
+  prologue: GameStory['prologue'];
+  discoveries: DiscoveryText[];
+  epilogue: GameStory['epilogue'];
+};
+
+/** Usa a tradução só se tiver o mesmo tamanho do original (mantém a resposta certa no mesmo lugar). */
+function sameShape<T>(base: T[], translated: T[] | undefined, where: string): T[] {
+  if (translated && translated.length === base.length) return translated;
+  console.warn(`Tradução incompleta em ${where}; usando o texto original.`);
+  return base;
+}
+
+function localizeSimulation(simulation: Simulation, stops: string[] | undefined, where: string): Simulation {
+  return simulation.kind === 'rover-drive' ? { ...simulation, stops: sameShape(simulation.stops, stops, `${where} (paradas)`) } : simulation;
+}
+
+function localizeActivity(base: Activity, text: ActivityText, where: string): Activity {
+  const common = { prompt: text.prompt, success: text.success, hint: text.hint };
+  switch (base.type) {
+    case 'match': return { ...base, ...common, pairs: sameShape(base.pairs, text.pairs, where) };
+    case 'order': return { ...base, ...common, sequence: sameShape(base.sequence, text.sequence, where) };
+    case 'simulation': return { ...base, ...common, simulation: localizeSimulation(base.simulation, text.stops, where) };
+    default: return {
+      ...base,
+      ...common,
+      options: sameShape(base.options, text.options, where),
+      simulation: base.simulation && localizeSimulation(base.simulation, text.stops, where),
+    };
+  }
+}
+
+/** Monta a história em outro idioma a partir dos textos traduzidos. */
+export function localizeStory(text: StoryText): GameStory {
+  if (text.discoveries.length !== discoveries.length) console.warn('Tradução com número diferente de descobertas.');
+  return {
+    prologue: text.prologue,
+    epilogue: text.epilogue,
+    discoveries: discoveries.map((base, index) => {
+      const t = text.discoveries[index];
+      if (!t) return base;
+      return {
+        ...base,
+        title: t.title,
+        subtitle: t.subtitle,
+        location: t.location,
+        route: t.route,
+        objective: t.objective,
+        teaser: t.teaser,
+        encounter: t.encounter,
+        facts: t.facts,
+        fiction: t.fiction,
+        steps: base.steps.map((step, s) => {
+          const st = t.steps[s];
+          if (!st) return step;
+          return { ...step, title: st.title, paragraphs: st.paragraphs, activity: localizeActivity(step.activity, st.activity, `${base.number}/${step.id}`) };
+        }),
+      };
+    }),
+  };
+}
