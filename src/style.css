@@ -45,11 +45,11 @@ kbd:first-child { grid-column: 2; }
 .controls p { display: flex; flex-direction: column; margin: 0; color: #a5acc9; font-size: 12px; }
 .controls strong { color: #fff; font-size: 12px; letter-spacing: .12em; }
 .asset-credit { position: absolute; z-index: 3; right: 36px; bottom: 22px; margin: 0; color: rgba(206,211,233,.7); font-size: 9px; font-weight: 800; letter-spacing: .15em; pointer-events: none; }
-.intro { position: absolute; z-index: 10; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 70% 35%, rgba(31,49,111,.2), rgba(5,7,25,.8)); backdrop-filter: blur(3px); transition: opacity .55s ease, visibility .55s; }
+.intro { position: absolute; z-index: 10; inset: 0; display: grid; overflow-y: auto; padding: 16px 0; background: radial-gradient(circle at 70% 35%, rgba(31,49,111,.2), rgba(5,7,25,.8)); backdrop-filter: blur(3px); transition: opacity .55s ease, visibility .55s; }
 .intro::before, .intro::after { content: ''; position: absolute; width: 280px; height: 1px; top: 50%; background: linear-gradient(90deg, transparent, rgba(255,159,83,.5)); }
 .intro::before { right: calc(50% + 310px); }
 .intro::after { left: calc(50% + 310px); transform: scaleX(-1); }
-.intro-content { width: min(780px, 90vw); text-align: center; }
+.intro-content { width: min(780px, 90vw); margin: auto; text-align: center; }
 .intro-content h2 { margin: 0 0 18px; font: 700 clamp(44px, 6vw, 76px)/.87 'Barlow Condensed'; letter-spacing: -.035em; text-transform: uppercase; text-shadow: 0 8px 40px rgba(0,0,0,.45); }
 .prologue-pages { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 auto 14px; text-align: left; }
 .prologue-pages p { margin: 0; padding: 14px; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; color: #c9cee0; background: rgba(9,12,37,.44); font-size: 15px; line-height: 1.5; }
@@ -63,14 +63,18 @@ button { border: 0; cursor: pointer; }
 .discovery-toast .eyebrow { margin-bottom: 4px; }
 .discovery-toast h2 { margin: 0; font: 700 25px 'Barlow Condensed'; text-transform: uppercase; }
 #investigate-button { margin-left: auto; padding: 13px 18px; }
-.modal { position: absolute; z-index: 20; inset: 0; display: grid; place-items: center; padding: 30px; background: rgba(4,5,18,.78); backdrop-filter: blur(8px); }
-.artifact-card { display: grid; grid-template-columns: .8fr 1.2fr; width: min(1080px, 95vw); max-height: 92vh; overflow: hidden; border: 1px solid rgba(255,255,255,.16); border-radius: 26px; background: #111631; box-shadow: 0 35px 100px rgba(0,0,0,.55); }
+/* Modais: o cartão nunca passa da altura da tela; o conteúdo que sobra rola por dentro.
+   margin: auto centraliza sem cortar o topo quando a tela é baixa. */
+.modal { --modal-pad: clamp(10px, 3vh, 30px); position: absolute; z-index: 20; inset: 0; display: grid; overflow-y: auto; padding: var(--modal-pad); background: rgba(4,5,18,.78); backdrop-filter: blur(8px); }
+.modal > * { margin: auto; }
+.artifact-card { display: grid; grid-template-columns: .8fr 1.2fr; grid-template-rows: minmax(0, 1fr); width: min(1080px, 95vw); max-height: calc(100vh - 2 * var(--modal-pad)); max-height: calc(100dvh - 2 * var(--modal-pad)); overflow: hidden; border: 1px solid rgba(255,255,255,.16); border-radius: 26px; background: #111631; box-shadow: 0 35px 100px rgba(0,0,0,.55); }
 .artifact-visual { position: relative; display: grid; place-items: center; overflow: hidden; background: radial-gradient(circle at 50% 56%, #815238 0 10%, #30365d 36%, #11152f 70%); }
 .artifact-visual::after { content: ''; position: absolute; inset: 0; background: repeating-radial-gradient(ellipse at 50% 110%, transparent 0 26px, rgba(255,255,255,.035) 27px 28px); }
 .artifact-number { position: absolute; top: 20px; left: 24px; color: rgba(255,255,255,.08); font: 800 110px/1 'Barlow Condensed'; }
 .station-icon { position: relative; z-index: 1; color: #ff9d4c; font-size: 150px; text-shadow: 0 0 45px rgba(255,117,51,.5); transform: rotate(-12deg); }
 .artifact-visual > span { position: absolute; z-index: 2; bottom: 22px; color: #b3bad3; font-size: 12px; font-weight: 800; letter-spacing: .18em; }
-.artifact-copy { padding: 32px 38px; overflow-y: auto; }
+.artifact-copy { min-height: 0; max-height: inherit; padding: 32px 38px; overflow-y: auto; overscroll-behavior: contain; }
+.artifact-copy, .artifact-card, .epilogue-card, .prologue-pages, .intro { scrollbar-width: thin; scrollbar-color: rgba(255,157,76,.6) transparent; }
 .artifact-heading { display: flex; align-items: center; justify-content: space-between; }
 .artifact-heading strong { color: #ffb060; font-size: 13px; letter-spacing: .1em; }
 .artifact-copy h2 { margin: 0; font: 700 40px/.92 'Barlow Condensed'; text-transform: uppercase; }
@@ -112,7 +116,8 @@ dd { margin: 3px 0 0; font: 700 22px 'Barlow Condensed'; }
   .progress-card { width: 140px; }
   .controls { left: 18px; bottom: 18px; }
   .asset-credit { right: 18px; bottom: 10px; font-size: 6px; }
-  .artifact-card { grid-template-columns: 1fr; max-height: 90vh; overflow: auto; }
+  .artifact-card { grid-template-columns: 1fr; grid-template-rows: auto; overflow-y: auto; overscroll-behavior: contain; }
+  .artifact-copy { max-height: none; overflow: visible; }
   .artifact-visual { min-height: 210px; }
   .artifact-copy { padding: 30px; }
   .artifact-copy h2 { font-size: 36px; }
@@ -208,7 +213,7 @@ button.route-item:hover strong { color: #73dcb0; }
 .order-slots li.filled { color: #73dcb0; font-weight: 800; }
 
 /* Epílogo */
-.epilogue-card { width: min(760px, 95vw); max-height: 92vh; overflow-y: auto; padding: 34px 38px; border-radius: 26px; text-align: center; }
+.epilogue-card { width: min(760px, 95vw); max-height: calc(100vh - 2 * var(--modal-pad)); max-height: calc(100dvh - 2 * var(--modal-pad)); overflow-y: auto; overscroll-behavior: contain; padding: 34px 38px; border-radius: 26px; text-align: center; }
 .epilogue-card h2 { margin: 0 0 16px; font: 700 clamp(36px, 5vw, 56px)/.92 'Barlow Condensed'; text-transform: uppercase; }
 #epilogue-text p { margin: 0 0 10px; color: #cdd2e3; font-size: 16px; line-height: 1.55; }
 .epilogue-stats { justify-content: center; margin: 22px 0; }
