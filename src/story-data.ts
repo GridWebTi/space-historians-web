@@ -67,6 +67,12 @@ export type Discovery = {
   year: string;
   location: string;
   kind: EquipmentKind;
+  /** Fotografia histórica do equipamento (caminho público). */
+  image: string;
+  /** Descrição da fotografia para leitores de tela. */
+  imageAlt: string;
+  /** Crédito da fotografia; igual em todos os idiomas. */
+  imageCredit: string;
   /** Posição no mapa do jogo (x, z). O mapa é uma representação compacta, fora de escala. */
   position: { x: number; z: number };
   route: { label: string; detail: string };
@@ -74,8 +80,17 @@ export type Discovery = {
   teaser: string;
   encounter: string[];
   steps: StoryStep[];
+  /** Pergunta bônus opcional (vale pontos extras; nunca bloqueia o progresso). */
+  quiz: ChoiceActivity;
   facts: string;
   fiction: string;
+};
+
+export type Prologue = {
+  eyebrow: string;
+  title: string;
+  /** Páginas do prólogo. Os parágrafos são exibidos como HTML. */
+  pages: { paragraphs: string[]; quote?: string }[];
 };
 
 const LABELS = { identity: 'O que é?', function: 'O que fez na Lua?', evidence: 'Como sabemos?' } as const;
@@ -89,6 +104,9 @@ const discoveries: Discovery[] = [
     year: '1969',
     location: 'Oceanus Procellarum',
     kind: 'alsep',
+    image: '/images/discoveries/01-apollo-12-alsep.webp',
+    imageAlt: 'A central da estação, coberta por uma manta prateada e com uma antena em forma de haste, sobre o solo cheio de pegadas; ao fundo, o módulo lunar Intrepid.',
+    imageCredit: 'NASA · AS12-47-6928',
     position: { x: 1.8, z: -6.5 },
     route: { label: 'Estação Lunar', detail: 'Apollo 12' },
     objective: 'Encontre a estação lunar',
@@ -151,6 +169,13 @@ const discoveries: Discovery[] = [
         },
       },
     ],
+    quiz: {
+      prompt: 'O que a antena desta estação fazia?',
+      options: ['Iluminava o terreno durante a noite', 'Transmitia as medições para a Terra', 'Registrava as vibrações do solo'],
+      correct: 1,
+      success: 'Isso mesmo! A antena enviava as medições para a Terra, mesmo depois da partida dos astronautas.',
+      hint: 'Pista: em “O que é?”, procure o que o texto diz sobre a antena.',
+    },
     facts: 'Instalação em 1969, instrumentos, transmissão e registros da decolagem e do impacto. Fontes da ficha: NASA e estudos do ALSEP.',
     fiction: 'Percurso, registros simplificados, desafio, mochila e pontos.',
   },
@@ -162,6 +187,9 @@ const discoveries: Discovery[] = [
     year: '1967',
     location: 'Oceano das Tempestades',
     kind: 'surveyor',
+    image: '/images/discoveries/02-surveyor-3.webp',
+    imageAlt: 'Astronauta ao lado da Surveyor 3, tocando a câmera da sonda; ao fundo, o módulo lunar da Apollo 12.',
+    imageCredit: 'NASA · AS12-48-7134',
     position: { x: -14, z: -19 },
     route: { label: 'Surveyor 3', detail: 'sonda robótica' },
     objective: 'Encontre a sonda dentro da cratera',
@@ -229,6 +257,13 @@ const discoveries: Discovery[] = [
         },
       },
     ],
+    quiz: {
+      prompt: 'Quantas imagens a câmera da Surveyor 3 registrou?',
+      options: ['Cerca de cem', 'Exatamente doze', 'Mais de seis mil'],
+      correct: 2,
+      success: 'Isso! A câmera da Surveyor 3 registrou mais de seis mil imagens da superfície.',
+      hint: 'Pista: em “O que fez na Lua?”, procure o que o texto diz sobre a câmera.',
+    },
     facts: 'Pouso e saltos, câmera, pá, visita da Apollo 12 e recuperação de componentes. Fontes da ficha: NASA e NSSDCA.',
     fiction: 'Mistério, comparação interativa e pontuação.',
   },
@@ -240,6 +275,9 @@ const discoveries: Discovery[] = [
     year: '1971',
     location: 'Fra Mauro',
     kind: 'alsep',
+    image: '/images/discoveries/03-apollo-14-alsep.webp',
+    imageAlt: 'A central da estação, embrulhada em uma manta dourada, com o mastro da antena à frente e cabos espalhados pelo solo de Fra Mauro.',
+    imageCredit: 'NASA · AS14-67-9378',
     position: { x: -30, z: -36 },
     route: { label: 'Estação Lunar', detail: 'Apollo 14' },
     objective: 'Siga os cabos da estação em Fra Mauro',
@@ -301,6 +339,13 @@ const discoveries: Discovery[] = [
         },
       },
     ],
+    quiz: {
+      prompt: 'Em qual módulo lunar esta estação chegou à Lua?',
+      options: ['Antares', 'Falcon', 'Eagle'],
+      correct: 0,
+      success: 'Certo! O ALSEP da Apollo 14 chegou a Fra Mauro no módulo Antares.',
+      hint: 'Pista: o segundo parágrafo de “O que é?” diz o nome do módulo.',
+    },
     facts: 'Instalação, transporte no Antares e experimento sísmico ativo. Fontes da ficha: NASA e estudo dos experimentos.',
     fiction: 'Ilustração, sequência interativa e sinais simulados.',
   },
@@ -312,6 +357,9 @@ const discoveries: Discovery[] = [
     year: '1971',
     location: 'Hadley–Apennine',
     kind: 'alsep',
+    image: '/images/discoveries/04-apollo-15-alsep.webp',
+    imageAlt: 'A antena e a central dourada da estação em primeiro plano; um cabo cor de cobre atravessa o solo até um instrumento ao longe.',
+    imageCredit: 'NASA · AS15-87-11845',
     position: { x: -12, z: -50 },
     route: { label: 'Estação Lunar', detail: 'Apollo 15' },
     objective: 'Encontre a estação de Hadley–Apennine',
@@ -379,6 +427,13 @@ const discoveries: Discovery[] = [
         },
       },
     ],
+    quiz: {
+      prompt: 'Além do experimento de fluxo de calor, que outro instrumento fazia parte desta estação?',
+      options: ['Um refletor de laser', 'Uma pá robótica', 'Um sismômetro'],
+      correct: 2,
+      success: 'Isso! A estação reunia um sismômetro e um experimento de fluxo de calor.',
+      hint: 'Pista: o segundo parágrafo de “O que é?” cita dois instrumentos.',
+    },
     facts: 'Instalação, transporte no Falcon e investigação do calor interno. Fontes da ficha: NASA e estudo científico.',
     fiction: 'Desafio, corte do solo e temperaturas ilustrativas.',
   },
@@ -390,6 +445,9 @@ const discoveries: Discovery[] = [
     year: '1971',
     location: 'Hadley–Apennine',
     kind: 'rover',
+    image: '/images/discoveries/05-apollo-15-rover.webp',
+    imageAlt: 'O rover estacionado, com dois assentos, quatro rodas e uma antena em forma de guarda-chuva, diante de montanhas lunares.',
+    imageCredit: 'NASA · AS15-88-11901',
     position: { x: 6, z: -42 },
     route: { label: 'Rover', detail: 'Apollo 15' },
     objective: 'Siga as marcas de rodas',
@@ -454,6 +512,13 @@ const discoveries: Discovery[] = [
         },
       },
     ],
+    quiz: {
+      prompt: 'De que eram feitas as rodas deste rover?',
+      options: ['De borracha cheia de ar', 'De malha metálica', 'De madeira'],
+      correct: 1,
+      success: 'Isso! As quatro rodas do rover eram de malha metálica.',
+      hint: 'Pista: o segundo parágrafo de “O que é?” descreve as rodas.',
+    },
     facts: 'Primeiro carro lunar, transporte dobrado, Hadley Rille e percurso de 27,9 km. Fontes da ficha: NASA, NSSDC e LROC.',
     fiction: 'Cópia dirigível, trajeto e associação de evidências.',
   },
@@ -465,6 +530,9 @@ const discoveries: Discovery[] = [
     year: '1972',
     location: 'Terras altas de Descartes',
     kind: 'alsep',
+    image: '/images/discoveries/06-apollo-16-alsep.webp',
+    imageAlt: 'Vista da estação nas terras altas de Descartes: a antena à direita e instrumentos espalhados pelo solo, ligados por cabos finos.',
+    imageCredit: 'NASA · AS16-113-18355',
     position: { x: 24, z: -54 },
     route: { label: 'Estação Lunar', detail: 'Apollo 16' },
     objective: 'Encontre a estação de Descartes',
@@ -527,6 +595,13 @@ const discoveries: Discovery[] = [
         },
       },
     ],
+    quiz: {
+      prompt: 'O que aconteceu com o cabo do experimento de calor?',
+      options: ['Ele se rompeu durante a instalação', 'Foi levado de volta à Terra', 'Foi trocado por uma antena'],
+      correct: 0,
+      success: 'Isso! O cabo se rompeu durante a instalação, e os documentos da missão registraram o problema.',
+      hint: 'Pista: em “Como sabemos?”, veja o que os documentos da missão registram.',
+    },
     facts: 'Instalação, estudo sísmico e perda do experimento de calor. Fontes da ficha: NASA e estudo dos instrumentos.',
     fiction: 'Campos digitais, comparação dos sinais e desafio.',
   },
@@ -538,6 +613,9 @@ const discoveries: Discovery[] = [
     year: '1972',
     location: 'Descartes',
     kind: 'rover',
+    image: '/images/discoveries/07-apollo-16-rover.webp',
+    imageAlt: 'Um astronauta no rover, à esquerda, e o módulo lunar Orion, à direita, com pegadas e marcas de rodas no solo.',
+    imageCredit: 'NASA · AS16-116-18578',
     position: { x: 40, z: -40 },
     route: { label: 'Rover', detail: 'Apollo 16' },
     objective: 'Siga as marcas de rodas em Descartes',
@@ -600,6 +678,13 @@ const discoveries: Discovery[] = [
         },
       },
     ],
+    quiz: {
+      prompt: 'Que lugar o rover ajudou os astronautas a alcançar?',
+      options: ['A cratera Shorty', 'Hadley Rille', 'A North Ray Crater'],
+      correct: 2,
+      success: 'Isso! O rover levou John Young e Charles Duke até a North Ray Crater, onde coletaram amostras.',
+      hint: 'Pista: releia “O que fez na Lua?” e procure o nome da cratera.',
+    },
     facts: 'Tripulação, transporte, locais de coleta e câmera com vista da decolagem. Fontes da ficha: NASA, NSSDC e LROC.',
     fiction: 'Destaque da câmera, percurso virtual e desafio.',
   },
@@ -611,6 +696,9 @@ const discoveries: Discovery[] = [
     year: '1969',
     location: 'Mar da Tranquilidade',
     kind: 'reflector',
+    image: '/images/discoveries/08-apollo-11-reflector.webp',
+    imageAlt: 'O painel refletor, com dezenas de pequenos elementos, sobre o solo cheio de pegadas; no canto, uma perna do módulo Eagle.',
+    imageCredit: 'NASA · AS11-40-5952',
     position: { x: 44, z: -18 },
     route: { label: 'Refletor', detail: 'Apollo 11' },
     objective: 'Encontre o pequeno painel',
@@ -676,6 +764,13 @@ const discoveries: Discovery[] = [
         },
       },
     ],
+    quiz: {
+      prompt: 'Quantos elementos de sílica o painel tem?',
+      options: ['Dez', 'Cem', 'Mil'],
+      correct: 1,
+      success: 'Isso! São cem elementos que devolvem parte da luz na direção de onde ela veio.',
+      hint: 'Pista: o segundo parágrafo de “O que é?” diz quantos elementos o painel tem.',
+    },
     facts: 'Instalação, cem elementos, funcionamento e método de medição. Fontes da ficha: ILRS e documentos da Apollo 11.',
     fiction: 'Laser controlável, feixe visível e tempo ilustrativo.',
   },
@@ -687,6 +782,9 @@ const discoveries: Discovery[] = [
     year: '1969',
     location: 'Mar da Tranquilidade',
     kind: 'lm-descent',
+    image: '/images/discoveries/09-eagle-base-lro.webp',
+    imageAlt: 'Imagem orbital em preto e branco do terreno cheio de crateras do Mar da Tranquilidade, onde ficou a base do Eagle.',
+    imageCredit: 'NASA/GSFC/Arizona State University · LRO',
     position: { x: 54, z: -4 },
     route: { label: 'Base do Eagle', detail: 'Apollo 11' },
     objective: 'Encontre a base do Eagle',
@@ -750,6 +848,13 @@ const discoveries: Discovery[] = [
         },
       },
     ],
+    quiz: {
+      prompt: 'A parte superior do Eagle levou os astronautas de volta à órbita para encontrar qual nave?',
+      options: ['Columbia', 'Challenger', 'Intrepid'],
+      correct: 0,
+      success: 'Certo! A parte superior do Eagle levou os astronautas de volta à órbita para encontrar a Columbia.',
+      hint: 'Pista: em “O que fez na Lua?”, veja para onde a parte superior levou os astronautas.',
+    },
     facts: 'Pouso, estágios, permanência da base e destino final não confirmado do estágio de subida. Fontes: documentos e imagem orbital da ficha.',
     fiction: 'Busca guiada e modelo animado.',
   },
@@ -761,6 +866,9 @@ const discoveries: Discovery[] = [
     year: '1969',
     location: 'Mar da Tranquilidade',
     kind: 'psep',
+    image: '/images/discoveries/10-apollo-11-seismometer.webp',
+    imageAlt: 'Um astronauta caminha perto do PSEP, com seus dois painéis solares abertos; ao fundo, o módulo Eagle e uma bandeira.',
+    imageCredit: 'NASA · AS11-40-5948',
     position: { x: 40, z: 9 },
     route: { label: 'PSEP', detail: 'Apollo 11' },
     objective: 'Siga as pegadas até o aparelho',
@@ -826,6 +934,13 @@ const discoveries: Discovery[] = [
         },
       },
     ],
+    quiz: {
+      prompt: 'Quantos sismômetros o PSEP tinha?',
+      options: ['Um', 'Dois', 'Quatro'],
+      correct: 2,
+      success: 'Isso! O PSEP tinha quatro sismômetros, além de uma antena e dois painéis solares.',
+      hint: 'Pista: o segundo parágrafo de “O que é?” lista as partes do conjunto.',
+    },
     facts: 'Instalação, composição e registros de passos e movimentos. Fontes da ficha: relatórios científicos e da missão Apollo 11.',
     fiction: 'Personagem da simulação, gráfico e ondas coloridas.',
   },
@@ -837,6 +952,9 @@ const discoveries: Discovery[] = [
     year: '1972',
     location: 'Taurus–Littrow',
     kind: 'alsep',
+    image: '/images/discoveries/11-apollo-17-alsep.webp',
+    imageAlt: 'Um instrumento coberto por uma manta dourada sobre o solo cheio de pegadas; ao fundo, outros equipamentos da estação, ligados por cabos, diante das montanhas de Taurus–Littrow.',
+    imageCredit: 'NASA · AS17-134-20503',
     position: { x: 22, z: 26 },
     route: { label: 'Estação Lunar', detail: 'Apollo 17' },
     objective: 'Encontre a estação de Taurus–Littrow',
@@ -899,6 +1017,13 @@ const discoveries: Discovery[] = [
         },
       },
     ],
+    quiz: {
+      prompt: 'Até que profundidade as ondas ajudaram a investigar a crosta lunar naquela região?',
+      options: ['Cerca de três metros', 'Cerca de três quilômetros', 'Até o centro da Lua'],
+      correct: 1,
+      success: 'Isso! As ondas ajudaram a investigar a crosta até cerca de três quilômetros de profundidade, sem nenhum túnel.',
+      hint: 'Pista: o título e o texto de “O que fez na Lua?” trazem a profundidade.',
+    },
     facts: 'Ativação, transporte e investigação sísmica até cerca de 3 km na região. Fontes da ficha: NASA e estudo científico.',
     fiction: 'Desafio, sinais simplificados e ilustração subterrânea.',
   },
@@ -910,6 +1035,9 @@ const discoveries: Discovery[] = [
     year: '1972',
     location: 'Taurus–Littrow',
     kind: 'rover',
+    image: '/images/discoveries/12-apollo-17-rover.webp',
+    imageAlt: 'O rover estacionado ao lado de uma bandeira, visto do alto a partir do módulo lunar; no canto, aparece uma peça do módulo.',
+    imageCredit: 'NASA · AS17-140-21354',
     position: { x: 2, z: 40 },
     route: { label: 'Rover', detail: 'Apollo 17' },
     objective: 'Acompanhe as marcas de rodas',
@@ -969,22 +1097,46 @@ const discoveries: Discovery[] = [
         },
       },
     ],
+    quiz: {
+      prompt: 'O que aconteceu depois que a extensão do para-lama se soltou?',
+      options: ['Uma roda passou a lançar poeira sobre a tripulação e o carro', 'O rover parou de andar', 'A antena do rover caiu'],
+      correct: 0,
+      success: 'Isso! Sem a extensão do para-lama, a roda jogava poeira na tripulação e no carro. Uma peça pequena fazia diferença!',
+      hint: 'Pista: depois de percorrer o trajeto no simulador, a ficha conta o que o detalhe perto da roda causou.',
+    },
     facts: 'Tripulação, transporte dobrado, percurso de 35,7 km e episódio do para-lama. Fontes da ficha: NASA e NSSDC.',
     fiction: 'Destaque visual, cópia dirigível e trajeto.',
   },
 ];
 
+const prologue: Prologue = {
+  eyebrow: 'PRÓLOGO · UM ARQUIVO CHEIO DE PERGUNTAS',
+  title: 'Um arquivo cheio de perguntas',
+  pages: [
+    {
+      paragraphs: [
+        'A superfície lunar ocupa a janela da sua nave. Há crateras, pedras e sombras compridas. No mapa, pequenos pontos marcam os locais que você poderá explorar.',
+        'Você abre a mochila digital. O arquivo <strong>Space Historians</strong> aparece com doze fichas ainda incompletas.',
+      ],
+    },
+    {
+      paragraphs: [
+        'Cada uma tem o nome de um equipamento. Algumas mostram antenas; outras, carros de rodas incomuns. Há até a base de uma nave cuja parte superior já não está ali.',
+        'Uma mensagem apresenta sua missão:',
+      ],
+      quote: 'Equipamentos guardam histórias. Para descobri-las, observe, experimente nas simulações e procure evidências.',
+    },
+    {
+      paragraphs: [
+        'Você seleciona um dos locais disponíveis. O mapa mostra o caminho até o primeiro objeto.',
+        'Antes de sair, você olha novamente para as fichas. Encontrar os equipamentos será apenas o começo. O verdadeiro desafio será compreender como cada um ajudou as pessoas a conhecer melhor a Lua.',
+      ],
+    },
+  ],
+};
+
 export const gameStory = {
-  prologue: {
-    eyebrow: 'PRÓLOGO · UM ARQUIVO CHEIO DE PERGUNTAS',
-    title: 'As histórias que ficaram na Lua',
-    paragraphs: [
-      'A superfície lunar ocupa a janela da sua nave. Há crateras, pedras e sombras compridas. No mapa, pequenos pontos marcam os locais que você poderá explorar.',
-      'Você abre a mochila digital. O arquivo Space Historians aparece com doze fichas ainda incompletas.',
-      'Equipamentos guardam histórias. Para descobri-las, observe, experimente nas simulações e procure evidências.',
-    ],
-    mission: 'Encontre os equipamentos e descubra como cada um ajudou as pessoas a conhecer melhor a Lua.',
-  },
+  prologue,
   discoveries,
   epilogue: {
     eyebrow: 'EPÍLOGO · O QUE VOCÊ LEVA DA LUA',
@@ -1020,11 +1172,15 @@ export type DiscoveryText = {
   title: string;
   subtitle: string;
   location: string;
+  /** Descrição da fotografia (o caminho e o crédito vêm do original). */
+  imageAlt: string;
   route: { label: string; detail: string };
   objective: string;
   teaser: string;
   encounter: string[];
   steps: { title: string; paragraphs: string[]; activity: ActivityText }[];
+  /** Pergunta bônus: prompt, options (mesma ordem do original), success e hint. */
+  quiz: ActivityText;
   facts: string;
   fiction: string;
 };
@@ -1046,18 +1202,24 @@ function localizeSimulation(simulation: Simulation, stops: string[] | undefined,
   return simulation.kind === 'rover-drive' ? { ...simulation, stops: sameShape(simulation.stops, stops, `${where} (paradas)`) } : simulation;
 }
 
+function localizeChoice(base: ChoiceActivity, text: ActivityText, where: string): ChoiceActivity {
+  return {
+    ...base,
+    prompt: text.prompt,
+    success: text.success,
+    hint: text.hint,
+    options: sameShape(base.options, text.options, where),
+    simulation: base.simulation && localizeSimulation(base.simulation, text.stops, where),
+  };
+}
+
 function localizeActivity(base: Activity, text: ActivityText, where: string): Activity {
   const common = { prompt: text.prompt, success: text.success, hint: text.hint };
   switch (base.type) {
     case 'match': return { ...base, ...common, pairs: sameShape(base.pairs, text.pairs, where) };
     case 'order': return { ...base, ...common, sequence: sameShape(base.sequence, text.sequence, where) };
     case 'simulation': return { ...base, ...common, simulation: localizeSimulation(base.simulation, text.stops, where) };
-    default: return {
-      ...base,
-      ...common,
-      options: sameShape(base.options, text.options, where),
-      simulation: base.simulation && localizeSimulation(base.simulation, text.stops, where),
-    };
+    default: return localizeChoice(base, text, where);
   }
 }
 
@@ -1075,6 +1237,7 @@ export function localizeStory(text: StoryText): GameStory {
         title: t.title,
         subtitle: t.subtitle,
         location: t.location,
+        imageAlt: t.imageAlt,
         route: t.route,
         objective: t.objective,
         teaser: t.teaser,
@@ -1086,6 +1249,7 @@ export function localizeStory(text: StoryText): GameStory {
           if (!st) return step;
           return { ...step, title: st.title, paragraphs: st.paragraphs, activity: localizeActivity(step.activity, st.activity, `${base.number}/${step.id}`) };
         }),
+        quiz: t.quiz ? localizeChoice(base.quiz, t.quiz, `${base.number}/quiz`) : base.quiz,
       };
     }),
   };

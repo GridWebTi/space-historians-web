@@ -23,7 +23,7 @@ import '@babylonjs/loaders/glTF';
 import './style.css';
 import { gameStory, localizeStory, type Discovery, type GameStory, type StoryStep } from './story-data';
 import { storyEn } from './story-data.en';
-import { preferredLang, setLang, ui, type Lang } from './i18n';
+import { getLang, preferredLang, setLang, ui, type Lang } from './i18n';
 import { renderActivity } from './activities';
 import { buildEquipment, buildLabel, type ModelKit } from './models';
 
@@ -454,13 +454,13 @@ async function loadOfficialNasaLunarModule() {
 
 void loadOfficialNasaLunarModule();
 
-// Marcadores no chão: laranja = próxima descoberta, verde = concluída, cinza = bloqueada.
+// Marcadores no chão: laranja = destino escolhido, verde = concluída, azul-claro = disponível.
 const doneMat = material('ring-done', new Color3(0.2, 0.8, 0.55), new Color3(0.1, 0.45, 0.3));
-const lockedMat = material('ring-locked', new Color3(0.35, 0.36, 0.45), new Color3(0.06, 0.06, 0.09));
+const availableMat = material('ring-available', new Color3(0.55, 0.68, 1), new Color3(0.12, 0.17, 0.35));
 const rings = discoveries.map((discovery) => {
   const ring = MeshBuilder.CreateTorus(`discovery-ring-${discovery.number}`, { diameter: discovery.kind === 'alsep' ? 6.6 : 5.6, thickness: 0.06, tessellation: 64 }, scene);
   ring.position.set(discovery.position.x, 0.12, discovery.position.z);
-  ring.material = lockedMat;
+  ring.material = availableMat;
   ring.isPickable = false;
   return ring;
 });
@@ -529,11 +529,6 @@ const discoveryToast = document.querySelector<HTMLElement>('#discovery-toast')!;
 const discoveryCard = document.querySelector<HTMLElement>('#discovery-card')!;
 const investigateButton = document.querySelector<HTMLButtonElement>('#investigate-button')!;
 const closeButton = document.querySelector<HTMLButtonElement>('#continue-button')!;
-const prologueEyebrow = document.querySelector<HTMLElement>('#prologue-eyebrow')!;
-const prologueTitle = document.querySelector<HTMLElement>('#prologue-title')!;
-const prologueHook = document.querySelector<HTMLElement>('#prologue-hook')!;
-const prologueCards = document.querySelector<HTMLElement>('#prologue-cards')!;
-const prologueMission = document.querySelector<HTMLElement>('#prologue-mission')!;
 const encounterCopy = document.querySelector<HTMLElement>('#encounter-copy')!;
 const storyTabs = document.querySelector<HTMLElement>('#story-tabs')!;
 const storyPanel = document.querySelector<HTMLElement>('#story-panel')!;
@@ -542,80 +537,202 @@ const byId = <T extends HTMLElement = HTMLElement>(id: string) => document.getEl
 const card = {
   number: byId('card-number'), icon: byId('card-icon'), location: byId('card-location'), eyebrow: byId('card-eyebrow'),
   title: byId('card-title'), subtitle: byId('card-subtitle'), mission: byId('card-mission'), year: byId('card-year'),
-  facts: byId('card-facts'), fiction: byId('card-fiction'),
+  facts: byId('card-facts'), fiction: byId('card-fiction'), badge: byId('card-badge'),
+  photo: byId<HTMLImageElement>('card-photo'), photoFallback: byId('card-photo-fallback'), photoCredit: byId('card-photo-credit'),
+  quiz: byId<HTMLDetailsElement>('bonus-quiz'), quizBody: byId('quiz-body'), quizStatus: byId('quiz-status'),
 };
 const hud = {
   missionEyebrow: byId('mission-eyebrow'), missionTitle: byId('mission-title'), missionTeaser: byId('mission-teaser'),
   objective: byId('objective-text'), route: byId('route-list'), archiveCount: byId('archive-count'), archiveProgress: byId('archive-progress'),
+  knowledge: byId('hud-knowledge'), bonus: byId('hud-bonus'),
 };
 const epilogue = {
   root: byId('epilogue'), eyebrow: byId('epilogue-eyebrow'), title: byId('epilogue-title'), text: byId('epilogue-text'),
-  score: byId('epilogue-score'), distinction: byId('epilogue-distinction'), prompt: byId('epilogue-favorite-prompt'),
+  score: byId('epilogue-score'), bonus: byId('epilogue-bonus'), total: byId('epilogue-total'),
+  distinction: byId('epilogue-distinction'), prompt: byId('epilogue-favorite-prompt'),
   favorites: byId('epilogue-favorites'), closing: byId('epilogue-closing'), close: byId<HTMLButtonElement>('epilogue-close'),
+};
+const backpack = {
+  root: byId('backpack'), open: byId<HTMLButtonElement>('backpack-button'), close: byId<HTMLButtonElement>('backpack-close'),
+  name: byId('backpack-title'), nameView: byId('backpack-name-view'), nameForm: byId<HTMLFormElement>('backpack-name-form'),
+  nameInput: byId<HTMLInputElement>('backpack-name-input'), nameError: byId('backpack-name-error'),
+  edit: byId<HTMLButtonElement>('edit-name'), cancel: byId<HTMLButtonElement>('cancel-name'),
+  knowledge: byId('backpack-knowledge'), bonus: byId('backpack-bonus'), grid: byId('badge-grid'),
 };
 const toastEyebrow = byId('toast-eyebrow');
 const toastTitle = byId('toast-title');
 const toastNote = byId('toast-note');
 
+/** Ficha aberta no momento (número), para redesenhá-la ao trocar de idioma. */
+let activeCardNumber: string | null = null;
+
+const isCardOpen = () => !discoveryCard.classList.contains('hidden');
+const isEpilogueOpen = () => !epilogue.root.classList.contains('hidden');
+const isBackpackOpen = () => !backpack.root.classList.contains('hidden');
+const isModalOpen = () => isCardOpen() || isEpilogueOpen() || isBackpackOpen();
+
 let gameStarted = false;
 /** Etapas concluídas, no formato "número:etapa" (ex.: "01:identity"). */
 const completedSteps = new Set<string>();
 const openedDiscoveries = new Set<string>();
-let activeDiscovery: Discovery | null = null;
+/** Quizzes bônus acertados (número da descoberta). Guardados à parte do conhecimento. */
+const completedQuizzes = new Set<string>();
+/** Badges concedidos (número da descoberta): ganhos ao concluir as três camadas, uma única vez. */
+const earnedBadges = new Set<string>();
+let playerName = '';
+/** Destino escolhido pelo jogador (número da descoberta) ou null: a exploração é livre. */
+let activeDestination: string | null = null;
 let justCompleted: Discovery | null = null;
 let favorite: string | null = null;
 let epilogueSeen = false;
 
+const QUIZ_BONUS = 10;
 const stepKey = (discovery: Discovery, step: StoryStep) => `${discovery.number}:${step.id}`;
 const isStepDone = (discovery: Discovery, step: StoryStep) => completedSteps.has(stepKey(discovery, step));
+const stepsDone = (discovery: Discovery) => discovery.steps.filter((step) => isStepDone(discovery, step)).length;
 const isComplete = (discovery: Discovery) => discovery.steps.every((step) => isStepDone(discovery, step));
 const maxScore = (discovery: Discovery) => discovery.steps.reduce((total, step) => total + step.reward, 0);
 const scoreOf = (discovery: Discovery) => discovery.steps.filter((step) => isStepDone(discovery, step)).reduce((total, step) => total + step.reward, 0);
-const totalScore = () => discoveries.reduce((total, discovery) => total + scoreOf(discovery), 0);
-const totalMaxScore = discoveries.reduce((total, discovery) => total + maxScore(discovery), 0);
-/** Índice da próxima descoberta: as fichas são liberadas em ordem, uma de cada vez. */
-const currentIndex = () => { const index = discoveries.findIndex((discovery) => !isComplete(discovery)); return index === -1 ? discoveries.length : index; };
-const isUnlocked = (index: number) => index <= currentIndex();
-const allComplete = () => currentIndex() >= discoveries.length;
-
-function renderPrologue() {
-  prologueEyebrow.textContent = story.prologue.eyebrow;
-  prologueTitle.innerHTML = ui().prologueTitle;
-  // Prólogo curto: gancho + três cartões (os parágrafos completos seguem em story.prologue).
-  prologueHook.textContent = ui().prologueHook;
-  prologueCards.innerHTML = ui().prologueCards.map(([icon, label]) => `<div><span aria-hidden="true">${icon}</span><strong>${label}</strong></div>`).join('');
-  prologueMission.textContent = story.prologue.mission;
+const knowledgeTotal = () => discoveries.reduce((total, discovery) => total + scoreOf(discovery), 0);
+const knowledgeMax = discoveries.reduce((total, discovery) => total + maxScore(discovery), 0);
+const bonusTotal = () => discoveries.filter((discovery) => completedQuizzes.has(discovery.number)).length * QUIZ_BONUS;
+const bonusMax = discoveries.length * QUIZ_BONUS;
+const allComplete = () => discoveries.every(isComplete);
+type DiscoveryState = 'new' | 'progress' | 'done';
+const stateOf = (discovery: Discovery): DiscoveryState =>
+  isComplete(discovery) ? 'done' : stepsDone(discovery) > 0 || openedDiscoveries.has(discovery.number) || completedQuizzes.has(discovery.number) ? 'progress' : 'new';
+const findDiscovery = (number: string | null) => discoveries.find((discovery) => discovery.number === number) ?? null;
+/** Próxima descoberta não concluída na ordem recomendada, a partir de uma posição. */
+function nextRecommended(after = -1) {
+  for (let offset = 1; offset <= discoveries.length; offset += 1) {
+    const candidate = discoveries[(after + offset + discoveries.length) % discoveries.length];
+    if (!isComplete(candidate)) return candidate;
+  }
+  return null;
 }
 
-const TOTAL_DISCOVERIES = discoveries.length;
-const STORAGE_KEY = 'space-historians:progresso:v1';
+// Nome do explorador: obrigatório, 2 a 24 caracteres, sem espaços nas pontas.
+const NAME_MIN = 2;
+const NAME_MAX = 24;
+const cleanName = (value: string) => value.trim();
+const isValidName = (value: string) => cleanName(value).length >= NAME_MIN && cleanName(value).length <= NAME_MAX;
 
-// Progresso salvo no navegador (sobrevive a recarregar a página no tablet).
-// Formato: { "01": ["identity", ...], ..., "_meta": { favorite, epilogueSeen } }
+// Prólogo em páginas curtas, avançando por botão ou teclado (← →).
+const prologueEyebrow = byId('prologue-eyebrow');
+const prologueTitle = byId('prologue-title');
+const prologuePage = byId('prologue-page');
+const prologueDots = byId('prologue-dots');
+const prologueBack = byId<HTMLButtonElement>('prologue-back');
+const prologueNext = byId<HTMLButtonElement>('prologue-next');
+let prologueIndex = 0;
+
+function renderPrologue() {
+  const { pages } = story.prologue;
+  prologueIndex = Math.max(0, Math.min(prologueIndex, pages.length - 1));
+  const page = pages[prologueIndex];
+  const last = prologueIndex === pages.length - 1;
+  prologueEyebrow.textContent = story.prologue.eyebrow;
+  prologueTitle.textContent = story.prologue.title;
+  prologuePage.innerHTML = page.paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join('')
+    + (page.quote ? `<blockquote>“${page.quote}”</blockquote>` : '');
+  prologueDots.innerHTML = pages.map((_, index) => `<i class="${index === prologueIndex ? 'current' : ''}"></i>`).join('');
+  prologueDots.setAttribute('aria-label', ui().prologuePage(prologueIndex + 1, pages.length));
+  prologueBack.classList.toggle('is-invisible', prologueIndex === 0);
+  prologueNext.classList.toggle('step-hidden', last);
+  startButton.classList.toggle('step-hidden', !last);
+}
+
+function goToProloguePage(index: number) {
+  prologueIndex = index;
+  renderPrologue();
+  const last = prologueIndex === story.prologue.pages.length - 1;
+  (last ? startButton : prologueNext).focus({ preventScroll: true });
+}
+
+// Progresso salvo no navegador, em uma única chave versionada.
+const STORAGE_KEY = 'space-historians:progress:v2';
+const LEGACY_KEY = 'space-historians:progresso:v1';
+const LEGACY_NAME_KEY = 'space-historians:nome';
+
+type SavedProgress = {
+  version: 2;
+  playerName: string;
+  selectedLanguage: Lang;
+  activeDestination: string | null;
+  completedSteps: Record<string, string[]>;
+  completedQuizzes: string[];
+  earnedBadges: string[];
+  favoriteDiscovery: string | null;
+  epilogueSeen: boolean;
+};
+
+function restoreSteps(source: Record<string, unknown>) {
+  for (const discovery of discoveries) {
+    const ids = source[discovery.number];
+    if (!Array.isArray(ids)) continue;
+    discovery.steps.filter((step) => ids.includes(step.id)).forEach((step) => {
+      completedSteps.add(stepKey(discovery, step));
+      openedDiscoveries.add(discovery.number);
+    });
+  }
+}
+
 function loadProgress() {
   try {
-    // ?reiniciar na URL apaga o progresso (útil para testes e apresentações).
-    if (new URLSearchParams(location.search).has('reiniciar')) localStorage.removeItem(STORAGE_KEY);
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Record<string, unknown>;
-    for (const discovery of discoveries) {
-      const ids = saved[discovery.number];
-      if (!Array.isArray(ids)) continue;
-      discovery.steps.filter((step) => ids.includes(step.id)).forEach((step) => {
-        completedSteps.add(stepKey(discovery, step));
-        openedDiscoveries.add(discovery.number);
-      });
+    // ?reiniciar na URL apaga nome, pontos, etapas, quizzes, badges, destino e favorita.
+    if (new URLSearchParams(location.search).has('reiniciar')) {
+      [STORAGE_KEY, LEGACY_KEY, LEGACY_NAME_KEY].forEach((key) => localStorage.removeItem(key));
     }
-    const meta = (saved._meta ?? {}) as { favorite?: string; epilogueSeen?: boolean };
-    favorite = typeof meta.favorite === 'string' ? meta.favorite : null;
-    epilogueSeen = meta.epilogueSeen === true;
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw) as Partial<SavedProgress>;
+      if (saved.version !== 2) return;
+      playerName = typeof saved.playerName === 'string' && isValidName(saved.playerName) ? cleanName(saved.playerName) : '';
+      restoreSteps((saved.completedSteps ?? {}) as Record<string, unknown>);
+      const known = new Set(discoveries.map((discovery) => discovery.number));
+      (saved.completedQuizzes ?? []).filter((number) => known.has(number)).forEach((number) => { completedQuizzes.add(number); openedDiscoveries.add(number); });
+      activeDestination = saved.activeDestination && known.has(saved.activeDestination) ? saved.activeDestination : null;
+      favorite = saved.favoriteDiscovery && known.has(saved.favoriteDiscovery) ? saved.favoriteDiscovery : null;
+      epilogueSeen = saved.epilogueSeen === true;
+    } else {
+      // Migração da v1 ({ "01": ["identity", ...], _meta: { favorite, epilogueSeen } }): etapas e favorita são mantidas.
+      const legacy = localStorage.getItem(LEGACY_KEY);
+      if (legacy) {
+        const saved = JSON.parse(legacy) as Record<string, unknown>;
+        restoreSteps(saved);
+        const meta = (saved._meta ?? {}) as { favorite?: string; epilogueSeen?: boolean };
+        favorite = typeof meta.favorite === 'string' ? meta.favorite : null;
+        epilogueSeen = meta.epilogueSeen === true;
+      }
+      const legacyName = localStorage.getItem(LEGACY_NAME_KEY) ?? '';
+      if (isValidName(legacyName)) playerName = cleanName(legacyName);
+    }
+    // O badge acompanha a conclusão das três camadas (nunca é concedido duas vezes: é um conjunto).
+    discoveries.filter(isComplete).forEach((discovery) => earnedBadges.add(discovery.number));
   } catch { /* sem armazenamento disponível: segue sem salvar */ }
 }
 
 function saveProgress() {
   try {
-    const data: Record<string, unknown> = { _meta: { favorite, epilogueSeen } };
-    for (const discovery of discoveries) data[discovery.number] = discovery.steps.filter((step) => isStepDone(discovery, step)).map((step) => step.id);
+    const steps: Record<string, string[]> = {};
+    for (const discovery of discoveries) {
+      const ids = discovery.steps.filter((step) => isStepDone(discovery, step)).map((step) => step.id);
+      if (ids.length) steps[discovery.number] = ids;
+    }
+    const data: SavedProgress = {
+      version: 2,
+      playerName,
+      selectedLanguage: getLang(),
+      activeDestination,
+      completedSteps: steps,
+      completedQuizzes: [...completedQuizzes].sort(),
+      earnedBadges: [...earnedBadges].sort(),
+      favoriteDiscovery: favorite,
+      epilogueSeen,
+    };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    localStorage.removeItem(LEGACY_KEY);
+    localStorage.removeItem(LEGACY_NAME_KEY);
   } catch { /* ignora */ }
 }
 
@@ -626,78 +743,142 @@ function headline(text: string) {
   return `${words.slice(0, -tail).join(' ')}<br /><em>${words.slice(-tail).join(' ')}.</em>`;
 }
 
+function updateScores() {
+  const knowledge = ui().epilogueScore(knowledgeTotal(), knowledgeMax);
+  const bonus = ui().epilogueScore(bonusTotal(), bonusMax);
+  hud.knowledge.textContent = knowledge;
+  hud.bonus.textContent = bonus;
+  backpack.knowledge.textContent = knowledge;
+  backpack.bonus.textContent = bonus;
+}
+
 function updateHud() {
-  const index = currentIndex();
   const done = discoveries.filter(isComplete).length;
   hud.archiveCount.textContent = String(done).padStart(2, '0');
-  hud.archiveProgress.style.width = `${(done / TOTAL_DISCOVERIES) * 100}%`;
+  hud.archiveProgress.style.width = `${(done / discoveries.length) * 100}%`;
+  updateScores();
   const objectiveBox = hud.objective.parentElement!.parentElement!;
+  const target = findDiscovery(activeDestination);
   if (allComplete()) {
     hud.missionEyebrow.textContent = ui().archiveDoneEyebrow;
     hud.missionTitle.innerHTML = headline(ui().archiveDoneTitle);
     hud.missionTeaser.textContent = story.epilogue.closing;
-    hud.objective.textContent = ui().archiveDoneObjective(totalScore());
+    hud.objective.textContent = ui().archiveDoneObjective(knowledgeTotal() + bonusTotal());
     objectiveBox.classList.add('done');
-  } else {
-    const current = discoveries[index];
-    hud.missionEyebrow.textContent = ui().missionEyebrow(current.number, current.mission);
-    hud.missionTitle.innerHTML = headline(current.subtitle);
-    hud.missionTeaser.textContent = current.teaser;
-    hud.objective.textContent = justCompleted
-      ? ui().justCompleted(justCompleted.number, current.title)
-      : current.objective;
+  } else if (target) {
+    hud.missionEyebrow.textContent = ui().missionEyebrow(target.number, target.mission);
+    hud.missionTitle.innerHTML = headline(target.subtitle);
+    hud.missionTeaser.textContent = target.teaser;
+    hud.objective.textContent = justCompleted ? ui().justCompleted(justCompleted.number, target.title) : target.objective;
     objectiveBox.classList.toggle('done', Boolean(justCompleted));
+  } else {
+    hud.missionEyebrow.textContent = ui().freeEyebrow;
+    hud.missionTitle.innerHTML = headline(ui().freeTitle);
+    hud.missionTeaser.textContent = playerName ? ui().welcome(playerName) : '';
+    hud.objective.textContent = ui().freeObjective;
+    objectiveBox.classList.remove('done');
   }
   renderRoute();
   updateMarkers();
+  if (isBackpackOpen()) renderBackpack();
 }
 
+function setDestination(discovery: Discovery | null) {
+  activeDestination = discovery?.number ?? null;
+  justCompleted = null;
+  saveProgress();
+  updateHud();
+}
+
+const routeStatus = (discovery: Discovery) => ({ new: ui().routeNew, progress: ui().routeProgress, done: ui().routeDone })[stateOf(discovery)];
+
 function renderRoute() {
-  const index = Math.min(currentIndex(), discoveries.length - 1);
-  const first = Math.max(0, Math.min(index - 1, discoveries.length - 3));
   hud.route.innerHTML = '';
-  discoveries.slice(first, first + 3).forEach((discovery, offset) => {
-    const position = first + offset;
-    const complete = isComplete(discovery);
-    const unlocked = isUnlocked(position);
-    const item = document.createElement(complete ? 'button' : 'div');
+  discoveries.forEach((discovery) => {
+    const item = document.createElement('button');
+    const active = discovery.number === activeDestination;
     item.id = `route-${discovery.number}`;
-    item.className = `route-item${complete ? ' done' : unlocked ? ' active' : ''}`;
-    const status = complete ? ui().routeDone : unlocked ? ui().routeCurrent : ui().routeLocked;
-    item.innerHTML = `<b>${discovery.number}</b><div><strong>${discovery.route.label}</strong><span>${discovery.route.detail} · ${status}</span></div>`;
-    if (complete) {
-      item.title = ui().rereadCard;
-      item.addEventListener('click', () => openCard(discovery));
-    }
+    item.className = `route-item state-${stateOf(discovery)}${active ? ' active' : ''}`;
+    item.title = ui().setDestination;
+    item.setAttribute('aria-pressed', String(active));
+    item.innerHTML = `<b>${discovery.number}</b><div><strong>${discovery.route.label}</strong><span>${discovery.route.detail} · ${active ? `${ui().routeActive} · ` : ''}${routeStatus(discovery)}</span></div>`;
+    item.addEventListener('click', () => setDestination(discovery));
     hud.route.appendChild(item);
   });
+  hud.route.querySelector('.active')?.scrollIntoView({ block: 'nearest' });
 }
 
 function updateMarkers() {
   discoveries.forEach((discovery, index) => {
-    rings[index].material = isComplete(discovery) ? doneMat : isUnlocked(index) ? orangeMat : lockedMat;
-    labels[index].setEnabled(isUnlocked(index));
+    rings[index].material = isComplete(discovery) ? doneMat : discovery.number === activeDestination ? orangeMat : availableMat;
+    labels[index].setEnabled(true);
   });
 }
 
 const ICONS: Record<Discovery['kind'], string> = { alsep: '⌁', surveyor: '△', rover: '⊚', reflector: '▦', 'lm-descent': '⌂', psep: '◫' };
 
-function updateCardScore(discovery: Discovery) {
-  knowledgeScore.textContent = ui().points(scoreOf(discovery), maxScore(discovery));
-  knowledgeScore.classList.toggle('complete', isComplete(discovery));
+/** Badge gerado pelo jogo: número, ícone da categoria, nome, missão, estado e estrela do bônus. */
+function buildBadge(discovery: Discovery, tag: 'button' | 'div' = 'div') {
+  const state = stateOf(discovery);
+  const bonus = completedQuizzes.has(discovery.number);
+  const badge = document.createElement(tag);
+  badge.className = `badge state-${state}${bonus ? ' has-bonus' : ''}`;
+  const detail = state === 'progress' ? ui().badgeSteps(stepsDone(discovery)) : ui().badgeStates[state];
+  badge.innerHTML = `
+    <span class="badge-medal" aria-hidden="true"><span class="badge-icon">${ICONS[discovery.kind]}</span><b>${discovery.number}</b>
+      ${state === 'progress' ? `<svg class="badge-ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" pathLength="3" stroke-dasharray="${stepsDone(discovery)} 3"></circle></svg>` : ''}
+    </span>
+    <span class="badge-text"><strong>${discovery.title}</strong><small>${discovery.mission}</small><em>${detail}</em></span>
+    ${bonus ? `<span class="badge-star" title="${ui().quizDone}">★ ${ui().badgeBonus}</span>` : ''}`;
+  badge.setAttribute('aria-label', `${discovery.number} · ${discovery.title} · ${discovery.mission} · ${detail}${bonus ? ` · ${ui().badgeBonus}` : ''}`);
+  return badge;
 }
+
+function updateCardScore(discovery: Discovery) {
+  const bonus = completedQuizzes.has(discovery.number);
+  knowledgeScore.textContent = `${ui().points(scoreOf(discovery), maxScore(discovery))}${bonus ? ` · +${QUIZ_BONUS} ★` : ''}`;
+  knowledgeScore.classList.toggle('complete', isComplete(discovery));
+  const earned = earnedBadges.has(discovery.number);
+  card.badge.hidden = !earned;
+  card.badge.innerHTML = '';
+  if (earned) {
+    const label = document.createElement('p');
+    label.className = 'eyebrow';
+    label.textContent = ui().badgeEarned;
+    card.badge.append(label, buildBadge(discovery));
+  }
+  card.quiz.classList.toggle('done', bonus);
+  card.quizStatus.textContent = bonus ? ui().quizDone : ui().quizValue;
+}
+
+function renderPhoto(discovery: Discovery) {
+  card.photo.hidden = false;
+  card.photoFallback.hidden = true;
+  card.photo.alt = discovery.imageAlt;
+  card.photo.src = discovery.image;
+  card.photoCredit.textContent = ui().photoCredit(discovery.imageCredit);
+  card.icon.classList.add('behind-photo');
+}
+// Sem a foto, o cartão volta ao ícone do equipamento e mostra um aviso.
+card.photo.addEventListener('error', () => {
+  card.photo.hidden = true;
+  card.photoFallback.hidden = false;
+  card.photoFallback.textContent = ui().photoFallback;
+  card.icon.classList.remove('behind-photo');
+});
 
 function renderCard(discovery: Discovery) {
   card.number.textContent = discovery.number;
   card.icon.textContent = ICONS[discovery.kind];
   card.location.textContent = discovery.location.toUpperCase();
-  card.eyebrow.textContent = ui().cardEyebrow(discovery.number, String(TOTAL_DISCOVERIES).padStart(2, '0'));
+  card.eyebrow.textContent = ui().cardEyebrow(discovery.number, String(discoveries.length).padStart(2, '0'));
   card.title.textContent = discovery.title;
   card.subtitle.textContent = discovery.subtitle;
   card.mission.textContent = discovery.mission;
   card.year.textContent = discovery.year;
   card.facts.textContent = discovery.facts;
   card.fiction.textContent = discovery.fiction;
+  renderPhoto(discovery);
   encounterCopy.innerHTML = discovery.encounter.map((paragraph) => `<p>${paragraph}</p>`).join('');
   storyPanel.classList.add('hidden');
   storyPanel.innerHTML = '';
@@ -705,12 +886,28 @@ function renderCard(discovery: Discovery) {
   discovery.steps.forEach((step) => {
     const tab = document.createElement('button');
     tab.innerHTML = `<span>${ui().tabs[step.id]}</span><small>+${step.reward}</small>`;
+    tab.dataset.done = ui().stepDone;
     tab.classList.toggle('complete', isStepDone(discovery, step));
     tab.addEventListener('click', () => openStoryStep(discovery, step, tab));
     storyTabs.appendChild(tab);
   });
+  renderQuiz(discovery);
   updateCardScore(discovery);
   discoveryCard.querySelector('.artifact-copy')?.scrollTo(0, 0);
+}
+
+function completeStep(discovery: Discovery, step: StoryStep) {
+  if (isStepDone(discovery, step)) return false;
+  completedSteps.add(stepKey(discovery, step));
+  if (isComplete(discovery) && !earnedBadges.has(discovery.number)) {
+    earnedBadges.add(discovery.number);
+    justCompleted = discovery;
+    // Sugere a próxima da ordem, sem impedir outra escolha.
+    const index = discoveries.indexOf(discovery);
+    activeDestination = nextRecommended(index)?.number ?? null;
+  }
+  saveProgress();
+  return true;
 }
 
 function openStoryStep(discovery: Discovery, step: StoryStep, tab: HTMLButtonElement) {
@@ -726,12 +923,27 @@ function openStoryStep(discovery: Discovery, step: StoryStep, tab: HTMLButtonEle
     solved: done,
     successText: (earned) => (earned ? `${step.activity.success} ${ui().earned(step.reward)}` : step.activity.success),
     onSolved: () => {
-      if (isStepDone(discovery, step)) return;
-      completedSteps.add(stepKey(discovery, step));
+      if (!completeStep(discovery, step)) return;
       tab.classList.add('complete');
       updateCardScore(discovery);
-      if (isComplete(discovery)) justCompleted = discovery;
+      updateHud();
+    },
+  });
+}
+
+/** Quiz opcional: vale 10 pontos bônus uma única vez; errar não tira pontos e não bloqueia nada. */
+function renderQuiz(discovery: Discovery) {
+  card.quiz.open = false;
+  card.quizBody.innerHTML = '';
+  const solved = completedQuizzes.has(discovery.number);
+  renderActivity(card.quizBody, discovery.quiz, {
+    solved,
+    successText: (earned) => (earned ? `${discovery.quiz.success} ${ui().earnedBonus(QUIZ_BONUS)}` : discovery.quiz.success),
+    onSolved: () => {
+      if (completedQuizzes.has(discovery.number)) return;
+      completedQuizzes.add(discovery.number);
       saveProgress();
+      updateCardScore(discovery);
       updateHud();
     },
   });
@@ -740,15 +952,13 @@ function openStoryStep(discovery: Discovery, step: StoryStep, tab: HTMLButtonEle
 loadProgress();
 updateHud();
 
-// Abertura: 1) escolha do idioma; 2) nome do jogador (opcional); 3) prólogo; 4) jogo.
+// Abertura: 1) idioma; 2) nome do explorador (obrigatório); 3) prólogo em páginas; 4) mapa com os 12 locais.
 const languageStep = byId('language-step');
 const nameStep = byId('name-step');
 const prologueStep = byId('prologue-step');
 const languageButtons = [...document.querySelectorAll<HTMLButtonElement>('.language-option')];
 const nameInput = document.querySelector<HTMLInputElement>('#player-name')!;
-const PLAYER_NAME_KEY = 'space-historians:nome';
-let playerName = '';
-try { playerName = localStorage.getItem(PLAYER_NAME_KEY) ?? ''; } catch { /* ignora */ }
+const nameError = byId('name-error');
 
 function applyLanguage(lang: Lang) {
   setLang(lang);
@@ -757,7 +967,11 @@ function applyLanguage(lang: Lang) {
   labels.forEach((label) => { label.material?.dispose(true, true); label.dispose(); });
   labels = buildLabels();
   renderPrologue();
+  nameInput.placeholder = ui().namePlaceholder;
   updateHud();
+  // Uma ficha aberta é redesenhada no novo idioma, sem perder o estado.
+  if (activeCardNumber) { const open = findDiscovery(activeCardNumber); if (open) renderCard(open); }
+  saveProgress();
 }
 
 function showStep(step: HTMLElement) {
@@ -771,54 +985,65 @@ function showLanguageStep() {
   suggested.focus({ preventScroll: true });
 }
 
-function showNameStep(lang: Lang) {
-  applyLanguage(lang);
-  nameInput.placeholder = ui().namePlaceholder;
+function showNameStep() {
   nameInput.value = playerName;
+  nameError.textContent = '';
   showStep(nameStep);
   nameInput.focus({ preventScroll: true });
 }
 
 function showPrologueStep() {
   showStep(prologueStep);
-  startButton.focus({ preventScroll: true });
+  goToProloguePage(0);
 }
 
-function confirmName(name: string) {
-  playerName = name.trim().slice(0, 20);
-  try {
-    if (playerName) localStorage.setItem(PLAYER_NAME_KEY, playerName);
-    else localStorage.removeItem(PLAYER_NAME_KEY);
-  } catch { /* ignora */ }
+function confirmName() {
+  if (!isValidName(nameInput.value)) {
+    nameError.textContent = ui().nameError;
+    nameInput.setAttribute('aria-invalid', 'true');
+    nameInput.focus({ preventScroll: true });
+    return;
+  }
+  nameInput.removeAttribute('aria-invalid');
+  playerName = cleanName(nameInput.value);
+  saveProgress();
+  updateHud();
   showPrologueStep();
 }
 
-languageButtons.forEach((button) => button.addEventListener('click', () => showNameStep(button.dataset.lang as Lang)));
-byId('name-continue').addEventListener('click', () => confirmName(nameInput.value));
-byId('name-skip').addEventListener('click', () => confirmName(''));
+languageButtons.forEach((button) => button.addEventListener('click', () => { applyLanguage(button.dataset.lang as Lang); showNameStep(); }));
+byId('name-continue').addEventListener('click', confirmName);
+nameInput.addEventListener('input', () => { if (nameError.textContent && isValidName(nameInput.value)) nameError.textContent = ''; });
 nameInput.addEventListener('keydown', (event) => {
   // As teclas digitadas no nome não podem chegar aos controles do jogo.
   event.stopPropagation();
   // preventDefault: sem ele, o mesmo Enter "clica" no botão do prólogo, que recebe o foco, e pula a tela.
-  if (event.key === 'Enter') { event.preventDefault(); confirmName(nameInput.value); }
+  if (event.key === 'Enter') { event.preventDefault(); confirmName(); }
+});
+prologueBack.addEventListener('click', () => goToProloguePage(prologueIndex - 1));
+prologueNext.addEventListener('click', () => goToProloguePage(prologueIndex + 1));
+window.addEventListener('keydown', (event) => {
+  if (gameStarted || prologueStep.classList.contains('step-hidden')) return;
+  if (event.key === 'ArrowRight' && prologueIndex < story.prologue.pages.length - 1) goToProloguePage(prologueIndex + 1);
+  if (event.key === 'ArrowLeft' && prologueIndex > 0) goToProloguePage(prologueIndex - 1);
 });
 byId('change-language').addEventListener('click', showLanguageStep);
-// ?lang=pt ou ?lang=en na URL pula a escolha e o nome (útil para links de apresentação).
-if (languagePreference.fromUrl) { applyLanguage(languagePreference.lang); showPrologueStep(); }
-else showLanguageStep();
+// ?lang=pt ou ?lang=en na URL pula a escolha do idioma (útil para links de apresentação); o nome continua obrigatório.
+if (languagePreference.fromUrl) {
+  applyLanguage(languagePreference.lang);
+  if (playerName) showPrologueStep(); else showNameStep();
+} else showLanguageStep();
 
 startButton.addEventListener('click', () => {
   intro.classList.add('hidden');
   gameStarted = true;
+  updateHud();
   canvas.focus();
 });
 
 const DISCOVERY_RADIUS = 7.5;
 const CLICK_RADIUS = 14;
 let toastTarget: Discovery | null = null;
-
-const isCardOpen = () => !discoveryCard.classList.contains('hidden');
-const isEpilogueOpen = () => !epilogue.root.classList.contains('hidden');
 const distanceTo = (index: number) => Math.hypot(astronaut.position.x - discoveries[index].position.x, astronaut.position.z - discoveries[index].position.z);
 
 function nearestDiscovery() {
@@ -829,7 +1054,8 @@ function nearestDiscovery() {
 
 function openCard(discovery: Discovery) {
   if (!gameStarted || isCardOpen() || isEpilogueOpen()) return;
-  activeDiscovery = discovery;
+  closeBackpack(false);
+  activeCardNumber = discovery.number;
   openedDiscoveries.add(discovery.number);
   if (justCompleted && justCompleted !== discovery) justCompleted = null;
   keys.clear();
@@ -838,12 +1064,13 @@ function openCard(discovery: Discovery) {
   discoveryToast.classList.add('hidden');
   discoveryCard.classList.remove('hidden');
   storyTabs.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
+  updateHud();
 }
 
 function closeCard() {
   if (!isCardOpen()) return;
   discoveryCard.classList.add('hidden');
-  activeDiscovery = null;
+  activeCardNumber = null;
   canvas.focus();
   updateHud();
   if (allComplete() && !epilogueSeen) showEpilogue();
@@ -854,8 +1081,10 @@ function showEpilogue() {
   epilogue.eyebrow.textContent = text.eyebrow;
   epilogue.title.innerHTML = headline(text.title);
   epilogue.text.innerHTML = text.paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join('');
-  epilogue.score.textContent = ui().epilogueScore(totalScore(), totalMaxScore);
-  epilogue.distinction.textContent = text.distinction;
+  epilogue.score.textContent = ui().epilogueScore(knowledgeTotal(), knowledgeMax);
+  epilogue.bonus.textContent = ui().epilogueScore(bonusTotal(), bonusMax);
+  epilogue.total.textContent = ui().epilogueScore(knowledgeTotal() + bonusTotal(), knowledgeMax + bonusMax);
+  epilogue.distinction.textContent = ui().epilogueExplorer(playerName, text.distinction);
   epilogue.prompt.textContent = text.favoritePrompt;
   epilogue.closing.textContent = text.closing;
   epilogue.favorites.innerHTML = '';
@@ -886,23 +1115,83 @@ function closeEpilogue() {
 }
 epilogue.close.addEventListener('click', closeEpilogue);
 
+// Mochila: 12 espaços desde o início, nome editável e troca de idioma.
+function renderBackpack() {
+  backpack.name.textContent = playerName;
+  backpack.grid.innerHTML = '';
+  discoveries.forEach((discovery) => {
+    const badge = buildBadge(discovery, 'button');
+    badge.addEventListener('click', () => {
+      // Locais ainda não explorados viram destino; os demais reabrem a ficha.
+      if (stateOf(discovery) === 'new') { setDestination(discovery); closeBackpack(); return; }
+      openCard(discovery);
+    });
+    backpack.grid.appendChild(badge);
+  });
+  document.querySelectorAll<HTMLButtonElement>('.backpack-lang button').forEach((button) => {
+    button.setAttribute('aria-pressed', String(button.dataset.lang === getLang()));
+  });
+  updateScores();
+}
+
+function openBackpack() {
+  if (!gameStarted || isModalOpen()) return;
+  keys.clear();
+  releaseJoystick();
+  showNameView();
+  renderBackpack();
+  discoveryToast.classList.add('hidden');
+  backpack.root.classList.remove('hidden');
+  backpack.close.focus({ preventScroll: true });
+}
+
+function closeBackpack(focusCanvas = true) {
+  if (!isBackpackOpen()) return;
+  backpack.root.classList.add('hidden');
+  if (focusCanvas) canvas.focus();
+}
+
+function showNameView() {
+  backpack.nameForm.hidden = true;
+  backpack.nameView.hidden = false;
+  backpack.nameError.textContent = '';
+}
+
+backpack.open.addEventListener('click', openBackpack);
+backpack.close.addEventListener('click', () => closeBackpack());
+backpack.root.addEventListener('click', (event) => { if (event.target === backpack.root) closeBackpack(); });
+backpack.edit.addEventListener('click', () => {
+  backpack.nameView.hidden = true;
+  backpack.nameForm.hidden = false;
+  backpack.nameInput.value = playerName;
+  backpack.nameInput.focus();
+  backpack.nameInput.select();
+});
+backpack.cancel.addEventListener('click', showNameView);
+backpack.nameInput.addEventListener('keydown', (event) => { event.stopPropagation(); if (event.key === 'Escape') showNameView(); });
+backpack.nameForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  if (!isValidName(backpack.nameInput.value)) { backpack.nameError.textContent = ui().nameError; return; }
+  playerName = cleanName(backpack.nameInput.value);
+  saveProgress();
+  showNameView();
+  renderBackpack();
+  updateHud();
+  backpack.edit.focus();
+});
+document.querySelectorAll<HTMLButtonElement>('.backpack-lang button').forEach((button) => {
+  button.addEventListener('click', () => { applyLanguage(button.dataset.lang as Lang); renderBackpack(); });
+});
+
 // Mostra o aviso sempre que o astronauta está perto de um equipamento,
-// permitindo reabrir a ficha quantas vezes quiser.
+// permitindo reabrir a ficha quantas vezes quiser. Todos os 12 estão liberados.
 function updateDiscoveryToast() {
-  const { index, discovery, distance } = nearestDiscovery();
-  const near = gameStarted && !isCardOpen() && !isEpilogueOpen() && distance < DISCOVERY_RADIUS;
+  const { discovery, distance } = nearestDiscovery();
+  const near = gameStarted && !isModalOpen() && distance < DISCOVERY_RADIUS;
   discoveryToast.classList.toggle('hidden', !near);
   if (!near) { toastTarget = null; return; }
-  const unlocked = isUnlocked(index);
-  toastTarget = unlocked ? discovery : null;
+  toastTarget = discovery;
   toastTitle.textContent = discovery.title;
-  investigateButton.classList.toggle('is-hidden', !unlocked);
-  if (!unlocked) {
-    const next = discoveries[currentIndex()];
-    toastEyebrow.textContent = ui().toastLocked;
-    toastNote.textContent = ui().toastLockedNote(next.number, next.title);
-    return;
-  }
   const opened = openedDiscoveries.has(discovery.number);
   const eyebrow = opened ? ui().toastArchive : ui().toastFound;
   toastEyebrow.textContent = playerName ? `${eyebrow} · ${playerName.toUpperCase()}` : eyebrow;
@@ -913,23 +1202,25 @@ function updateDiscoveryToast() {
 investigateButton.addEventListener('click', () => { if (toastTarget) openCard(toastTarget); });
 closeButton.addEventListener('click', closeCard);
 // Esc ou clique fora do cartão também fecham a ficha.
-window.addEventListener('keydown', (event) => { if (event.key === 'Escape') { closeCard(); closeEpilogue(); } });
+window.addEventListener('keydown', (event) => { if (event.key === 'Escape') { closeCard(); closeEpilogue(); closeBackpack(); } });
 discoveryCard.addEventListener('click', (event) => { if (event.target === discoveryCard) closeCard(); });
 
 window.addEventListener('keydown', (event) => {
-  if ((event.key === 'e' || event.key === 'E' || event.key === 'Enter') && !isCardOpen() && toastTarget) {
+  if ((event.key === 'e' || event.key === 'E' || event.key === 'Enter') && !isModalOpen() && toastTarget) {
     if (event.key === 'Enter' && document.activeElement instanceof HTMLButtonElement) return;
     openCard(toastTarget);
   }
+  // M abre a mochila.
+  if ((event.key === 'm' || event.key === 'M') && gameStarted && !isModalOpen()) openBackpack();
 });
 
-// Clicar ou tocar em um equipamento liberado também abre a ficha.
+// Clicar ou tocar em um equipamento também abre a ficha.
 scene.onPointerObservable.add((info) => {
   if (info.type !== PointerEventTypes.POINTERTAP) return;
   const mesh = info.pickInfo?.pickedMesh;
   if (!mesh) return;
   const index = equipment.findIndex((root) => mesh.isDescendantOf(root));
-  if (index >= 0 && isUnlocked(index) && distanceTo(index) < CLICK_RADIUS) openCard(discoveries[index]);
+  if (index >= 0 && distanceTo(index) < CLICK_RADIUS) openCard(discoveries[index]);
 });
 
 const WALK_SPEED = 4.5; // unidades por segundo (equivale ao antigo 0,075 por quadro a 60 fps)
@@ -942,11 +1233,12 @@ function readMovementInput() {
   return new Vector3(Math.max(-1, Math.min(1, x)), 0, Math.max(-1, Math.min(1, z)));
 }
 
+// Seta aponta para o destino escolhido pelo jogador (sem destino, não aparece).
 function updateGuideArrow() {
-  const index = currentIndex();
-  const target = discoveries[index];
+  const target = findDiscovery(activeDestination);
+  const index = target ? discoveries.indexOf(target) : -1;
   const distance = target ? distanceTo(index) : 0;
-  const visible = gameStarted && Boolean(target) && distance > DISCOVERY_RADIUS && !isCardOpen();
+  const visible = gameStarted && Boolean(target) && distance > DISCOVERY_RADIUS && !isModalOpen();
   guideArrow.setEnabled(visible);
   if (!visible || !target) return;
   const dx = target.position.x - astronaut.position.x;
@@ -959,16 +1251,15 @@ function updateGuideArrow() {
 scene.onBeforeRenderObservable.add(() => {
   earth.rotation.y += 0.0008;
   const pulse = 1 + Math.sin(performance.now() / 500) * 0.04;
-  const next = currentIndex();
   rings.forEach((ring, index) => {
     ring.rotation.y += 0.012;
-    ring.scaling.setAll(index === next ? pulse : 1);
+    ring.scaling.setAll(discoveries[index].number === activeDestination ? pulse : 1);
   });
   // Céu e área de sombra acompanham o jogador.
   sky.position.set(camera.target.x, 0, camera.target.z);
   sun.position.copyFrom(astronaut.position.add(SUN_OFFSET));
   updateGuideArrow();
-  if (!gameStarted || isCardOpen() || isEpilogueOpen()) return;
+  if (!gameStarted || isModalOpen()) return;
   // Tempo real entre quadros: a velocidade é a mesma em qualquer computador.
   const dt = Math.min(engine.getDeltaTime() / 1000, 0.1);
   const input = readMovementInput();
@@ -1005,6 +1296,17 @@ if (import.meta.env.DEV) {
   (window as unknown as { __game: unknown }).__game = {
     scene, camera, astronaut, station, landingSite, equipment,
     get story() { return story; },
+    /** Estado de pontuação, para conferir nos testes. */
+    get progress() { return { knowledge: knowledgeTotal(), bonus: bonusTotal(), badges: [...earnedBadges], quizzes: [...completedQuizzes], name: playerName, destination: activeDestination }; },
+    /** Conclui as camadas (e, se pedido, o quiz) pelo mesmo caminho das atividades. */
+    complete(index: number, withQuiz = false) {
+      const discovery = discoveries[index];
+      openedDiscoveries.add(discovery.number);
+      discovery.steps.forEach((step) => completeStep(discovery, step));
+      if (withQuiz && !completedQuizzes.has(discovery.number)) { completedQuizzes.add(discovery.number); saveProgress(); }
+      updateHud();
+    },
+    closeCard,
     /** Coloca o astronauta diante de um equipamento (índice 0–11). */
     teleport(index: number, distance = 5) {
       const target = discoveries[index].position;
