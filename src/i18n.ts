@@ -13,8 +13,16 @@ const pt = {
   languageTitle: 'Escolha o idioma',
   languageHint: 'Choose your language',
   changeLanguage: 'Trocar idioma',
+  // Nome do jogador
+  nameEyebrow: 'IDENTIFICAÇÃO DA TRIPULAÇÃO',
+  nameTitle: 'Como devemos<br /><em>te chamar?</em>',
+  namePlaceholder: 'Seu nome de exploração',
+  nameContinue: 'CONTINUAR',
+  nameSkip: 'PULAR',
   // Prólogo
   prologueTitle: 'As histórias que<br /><em>ficaram na Lua.</em>',
+  prologueHook: 'Doze equipamentos ficaram na Lua. Cada um guarda uma história — e o arquivo ainda está incompleto.',
+  prologueCards: [['👁', 'Observe'], ['🧪', 'Experimente'], ['🔍', 'Busque evidências']] as [string, string][],
   startButton: 'ABRIR O MAPA LUNAR',
   // HUD
   archive: 'ARQUIVO LUNAR',
@@ -97,7 +105,14 @@ const en: UiText = {
   languageTitle: 'Choose your language',
   languageHint: 'Escolha o idioma',
   changeLanguage: 'Change language',
+  nameEyebrow: 'CREW IDENTIFICATION',
+  nameTitle: 'What should<br /><em>we call you?</em>',
+  namePlaceholder: 'Your explorer name',
+  nameContinue: 'CONTINUE',
+  nameSkip: 'SKIP',
   prologueTitle: 'The stories that<br /><em>stayed on the Moon.</em>',
+  prologueHook: 'Twelve pieces of equipment stayed on the Moon. Each one holds a story — and the archive is still incomplete.',
+  prologueCards: [['👁', 'Observe'], ['🧪', 'Experiment'], ['🔍', 'Look for evidence']],
   startButton: 'OPEN THE LUNAR MAP',
   archive: 'LUNAR ARCHIVE',
   objective: 'CURRENT OBJECTIVE',
@@ -188,12 +203,14 @@ export function setLang(lang: Lang) {
 /** Idioma pedido na URL (?lang=en) ou o último escolhido neste navegador. */
 export function preferredLang(): { lang: Lang; fromUrl: boolean } {
   const fromUrl = new URLSearchParams(location.search).get('lang');
-  if (fromUrl === 'pt' || fromUrl === 'en') return { lang: fromUrl, fromUrl: true };
+  const isLang = (value: string | null): value is Lang => LANGS.includes(value as Lang);
+  if (isLang(fromUrl)) return { lang: fromUrl, fromUrl: true };
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === 'pt' || saved === 'en') return { lang: saved, fromUrl: false };
+    if (isLang(saved)) return { lang: saved, fromUrl: false };
   } catch { /* ignora */ }
-  return { lang: navigator.language?.toLowerCase().startsWith('pt') ? 'pt' : 'en', fromUrl: false };
+  const browser = navigator.language?.toLowerCase().slice(0, 2);
+  return { lang: isLang(browser) ? browser : 'en', fromUrl: false };
 }
 
 type StaticKey = { [K in keyof UiText]: UiText[K] extends string ? K : never }[keyof UiText];

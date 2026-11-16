@@ -51,8 +51,17 @@ kbd:first-child { grid-column: 2; }
 .intro::after { left: calc(50% + 310px); transform: scaleX(-1); }
 .intro-content { width: min(780px, 90vw); margin: auto; text-align: center; }
 .intro-content h2 { margin: 0 0 18px; font: 700 clamp(44px, 6vw, 76px)/.87 'Barlow Condensed'; letter-spacing: -.035em; text-transform: uppercase; text-shadow: 0 8px 40px rgba(0,0,0,.45); }
-.prologue-pages { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 auto 14px; text-align: left; }
-.prologue-pages p { margin: 0; padding: 14px; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; color: #c9cee0; background: rgba(9,12,37,.44); font-size: 15px; line-height: 1.5; }
+.prologue-hook { width: min(600px, 92%); margin: 0 auto 20px; color: #c9cee0; font-size: 18px; line-height: 1.5; }
+.prologue-cards { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 0 0 20px; }
+.prologue-cards div { display: flex; flex-direction: column; gap: 8px; align-items: center; min-width: 150px; padding: 16px 18px; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; background: rgba(9,12,37,.44); }
+.prologue-cards span { font-size: 28px; }
+.prologue-cards strong { color: #e8ebf7; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; }
+#player-name { display: block; width: min(400px, 90%); margin: 26px auto 20px; padding: 16px 18px; border: 1px solid rgba(255,255,255,.22); border-radius: 14px; color: #fff; background: rgba(9,12,37,.6); font: 600 18px 'Nunito Sans', sans-serif; text-align: center; outline: none; }
+#player-name:focus { border-color: #ff914f; box-shadow: 0 0 0 3px rgba(255,145,79,.25); }
+#player-name::placeholder { color: #7f88ad; }
+.name-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
+.ghost-button { min-height: 48px; padding: 14px 22px; border: 1px solid rgba(255,255,255,.22); border-radius: 999px; color: #c9cee0; background: transparent; font-size: 13px; font-weight: 800; letter-spacing: .1em; }
+.ghost-button:hover, .ghost-button:focus-visible { border-color: #ff9d4c; color: #ffce8f; outline: none; }
 .prologue-mission { width: min(650px, 95%); margin: 0 auto 20px; color: #ffcc88; font-size: 17px; font-weight: 700; }
 button { border: 0; cursor: pointer; }
 #start-button, #investigate-button, #continue-button { border-radius: 999px; color: #111327; background: linear-gradient(135deg, #ffd078, #ff8446); box-shadow: 0 10px 30px rgba(255,102,47,.28); font-size: 13px; font-weight: 900; letter-spacing: .12em; }
@@ -74,7 +83,7 @@ button { border: 0; cursor: pointer; }
 .station-icon { position: relative; z-index: 1; color: #ff9d4c; font-size: 150px; text-shadow: 0 0 45px rgba(255,117,51,.5); transform: rotate(-12deg); }
 .artifact-visual > span { position: absolute; z-index: 2; bottom: 22px; color: #b3bad3; font-size: 12px; font-weight: 800; letter-spacing: .18em; }
 .artifact-copy { min-height: 0; max-height: inherit; padding: 32px 38px; overflow-y: auto; overscroll-behavior: contain; }
-.artifact-copy, .artifact-card, .epilogue-card, .prologue-pages, .intro { scrollbar-width: thin; scrollbar-color: rgba(255,157,76,.6) transparent; }
+.artifact-copy, .artifact-card, .epilogue-card, .intro { scrollbar-width: thin; scrollbar-color: rgba(255,157,76,.6) transparent; }
 .artifact-heading { display: flex; align-items: center; justify-content: space-between; }
 .artifact-heading strong { color: #ffb060; font-size: 13px; letter-spacing: .1em; }
 .artifact-copy h2 { margin: 0; font: 700 40px/.92 'Barlow Condensed'; text-transform: uppercase; }
@@ -121,7 +130,8 @@ dd { margin: 3px 0 0; font: 700 22px 'Barlow Condensed'; }
   .artifact-visual { min-height: 210px; }
   .artifact-copy { padding: 30px; }
   .artifact-copy h2 { font-size: 36px; }
-  .prologue-pages { grid-template-columns: 1fr; max-height: 38vh; overflow-y: auto; }
+  .prologue-hook { font-size: 16px; }
+  .prologue-cards div { min-width: 0; flex: 1 1 30%; padding: 12px 8px; }
   .intro-content h2 { font-size: 42px; }
   .story-tabs { grid-template-columns: 1fr; }
 }
@@ -227,7 +237,7 @@ button.route-item:hover strong { color: #73dcb0; }
 
 /* Escolha de idioma */
 .step-hidden { display: none !important; }
-.language-step { width: min(620px, 92vw); text-align: center; }
+.language-step { width: min(620px, 92vw); margin: auto; text-align: center; }
 .language-title { display: flex; flex-direction: column; gap: 8px; margin: 0 0 26px; font: 700 clamp(40px, 6vw, 68px)/.9 'Barlow Condensed'; letter-spacing: -.02em; text-transform: uppercase; text-shadow: 0 8px 40px rgba(0,0,0,.45); }
 .language-title small { color: #ff9b53; font-size: .42em; letter-spacing: .06em; }
 .language-options { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }

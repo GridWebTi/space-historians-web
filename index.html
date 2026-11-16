@@ -41,10 +41,20 @@
             <button class="language-option" data-lang="en" lang="en"><span class="lang-code">EN</span><strong>English</strong><small>International</small></button>
           </div>
         </div>
+        <div id="name-step" class="intro-content step-hidden">
+          <p class="eyebrow" data-i18n="nameEyebrow">IDENTIFICAÇÃO DA TRIPULAÇÃO</p>
+          <h2 data-i18n-html="nameTitle">Como devemos<br /><em>te chamar?</em></h2>
+          <input id="player-name" maxlength="20" placeholder="Seu nome de exploração" autocomplete="off" spellcheck="false" />
+          <div class="name-actions">
+            <button id="name-continue" class="primary-button"><span data-i18n="nameContinue">CONTINUAR</span> <span>→</span></button>
+            <button id="name-skip" class="ghost-button" data-i18n="nameSkip">PULAR</button>
+          </div>
+        </div>
         <div id="prologue-step" class="intro-content step-hidden">
           <p id="prologue-eyebrow" class="eyebrow"></p>
           <h2 id="prologue-title"></h2>
-          <div id="prologue-pages" class="prologue-pages"></div>
+          <p id="prologue-hook" class="prologue-hook"></p>
+          <div id="prologue-cards" class="prologue-cards"></div>
           <p id="prologue-mission" class="prologue-mission"></p>
           <button id="start-button"><span data-i18n="startButton">ABRIR O MAPA LUNAR</span> <span>→</span></button>
           <button id="change-language" class="link-button" data-i18n="changeLanguage">Trocar idioma</button>

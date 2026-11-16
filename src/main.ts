@@ -14,8 +14,10 @@ import {
   StandardMaterial,
   TransformNode,
   Vector3,
+  VertexBuffer,
   WebGPUEngine,
   type AbstractEngine,
+  type Mesh,
 } from '@babylonjs/core';
 import '@babylonjs/loaders/glTF';
 import './style.css';
@@ -151,7 +153,20 @@ function resolveCollisions(position: Vector3) {
 
 // Mapa compacto com os 12 locais (fora de escala: na Lua real, eles ficam a centenas de quilômetros).
 const MAP_LIMIT = 62;
-const ground = MeshBuilder.CreateGround('lunar-surface', { width: 150, height: 150, subdivisions: 2 }, scene);
+// Relevo só fora da área jogável (além de MAP_LIMIT): colinas emolduram o mapa
+// sem tirar do chão os equipamentos, crateras, rochas e colisões, que ficam em y = 0.
+function terrainHeight(x: number, z: number) {
+  const fade = Math.min(1, Math.max(0, (Math.max(Math.abs(x), Math.abs(z)) - (MAP_LIMIT + 2)) / 8));
+  return fade * (1.6 + Math.sin(x * 0.18) * Math.cos(z * 0.16) * 0.9 + Math.sin(x * 0.05 + z * 0.08) * 0.8);
+}
+
+const ground = MeshBuilder.CreateGround('lunar-surface', { width: 150, height: 150, subdivisions: 120, updatable: true }, scene);
+const groundPositions = ground.getVerticesData(VertexBuffer.PositionKind)!;
+for (let i = 0; i < groundPositions.length; i += 3) {
+  groundPositions[i + 1] = terrainHeight(groundPositions[i], groundPositions[i + 2]);
+}
+ground.updateVerticesData(VertexBuffer.PositionKind, groundPositions);
+ground.createNormals(false);
 ground.material = moonMat;
 ground.receiveShadows = true;
 
@@ -269,28 +284,62 @@ function buildAstronaut() {
   visor.position.set(0, 2.75, -0.29);
   visor.rotation.x = -0.2;
   visor.material = visorMat;
+  const limbs: Record<'arms' | 'legs', Mesh[]> = { arms: [], legs: [] };
   [-0.7, 0.7].forEach((x) => {
     const arm = MeshBuilder.CreateCapsule(`arm-${x}`, { height: 1.25, radius: 0.19 }, scene);
     arm.parent = root;
     arm.position.set(x, 1.7, 0);
     arm.rotation.z = x > 0 ? -0.16 : 0.16;
     arm.material = whiteSuit;
+    // Pivô no ombro / quadril: o membro balança como uma articulação.
+    arm.setPivotPoint(new Vector3(0, 0.62, 0));
     shadows.addShadowCaster(arm);
     const leg = MeshBuilder.CreateCapsule(`leg-${x}`, { height: 1.2, radius: 0.24 }, scene);
     leg.parent = root;
     leg.position.set(x * 0.48, 0.63, 0);
     leg.material = whiteSuit;
+    leg.setPivotPoint(new Vector3(0, 0.6, 0));
     shadows.addShadowCaster(leg);
-    box(`boot-${x}`, { width: 0.48, height: 0.25, depth: 0.68 }, new Vector3(x * 0.48, 0.15, -0.12), metalMat, root);
+    // A bota é filha da perna, para acompanhar o passo.
+    box(`boot-${x}`, { width: 0.48, height: 0.25, depth: 0.68 }, new Vector3(0, -0.48, -0.12), metalMat, leg);
+    limbs.arms.push(arm);
+    limbs.legs.push(leg);
   });
   box('chest-panel', { width: 0.65, height: 0.45, depth: 0.12 }, new Vector3(0, 1.78, -0.53), metalMat, root);
-  return root;
+  return { root, limbs };
 }
 
-const astronaut = buildAstronaut();
+const { root: astronaut, limbs: astronautLimbs } = buildAstronaut();
 // copyFrom mantém ângulo e distância; atribuir camera.target recalcularia o ângulo com a câmera parada.
 camera.target.copyFrom(astronaut.position.add(new Vector3(0, 1.5, 0)));
+
 const proceduralAstronautParts = astronaut.getChildren().slice();
+
+// Ciclo de caminhada. O personagem visível é o modelo Poly (malha única, sem esqueleto), então a animação
+// é do corpo inteiro: quique a cada passo, leve inclinação para a frente e balanço lateral.
+// Os membros do astronauta procedural também balançam, caso ele apareça como reserva (GLB não carregou).
+let walkPhase = 0;
+function animateWalk(dt: number, effort: number) {
+  walkPhase += dt * 8 * effort;
+  const swing = Math.sin(walkPhase);
+  astronaut.position.y = Math.abs(Math.cos(walkPhase)) * 0.12 * effort;
+  // O visor aponta para -Z local: inclinar para a frente é girar x no sentido negativo.
+  astronaut.rotation.x = -0.09 * effort;
+  astronaut.rotation.z = swing * 0.06 * effort;
+  const [leftLeg, rightLeg] = astronautLimbs.legs;
+  const [leftArm, rightArm] = astronautLimbs.arms;
+  leftLeg.rotation.x = swing * 0.65;
+  rightLeg.rotation.x = -swing * 0.65;
+  leftArm.rotation.x = -swing * 0.5;
+  rightArm.rotation.x = swing * 0.5;
+}
+
+function relaxPose() {
+  for (const limb of [...astronautLimbs.arms, ...astronautLimbs.legs]) limb.rotation.x *= 0.8;
+  astronaut.position.y *= 0.82;
+  astronaut.rotation.x *= 0.82;
+  astronaut.rotation.z *= 0.82;
+}
 // Equipamentos das 12 descobertas (modelos simplificados, ver models.ts).
 const kit: ModelKit = {
   scene,
@@ -482,7 +531,8 @@ const investigateButton = document.querySelector<HTMLButtonElement>('#investigat
 const closeButton = document.querySelector<HTMLButtonElement>('#continue-button')!;
 const prologueEyebrow = document.querySelector<HTMLElement>('#prologue-eyebrow')!;
 const prologueTitle = document.querySelector<HTMLElement>('#prologue-title')!;
-const prologuePages = document.querySelector<HTMLElement>('#prologue-pages')!;
+const prologueHook = document.querySelector<HTMLElement>('#prologue-hook')!;
+const prologueCards = document.querySelector<HTMLElement>('#prologue-cards')!;
 const prologueMission = document.querySelector<HTMLElement>('#prologue-mission')!;
 const encounterCopy = document.querySelector<HTMLElement>('#encounter-copy')!;
 const storyTabs = document.querySelector<HTMLElement>('#story-tabs')!;
@@ -531,7 +581,9 @@ const allComplete = () => currentIndex() >= discoveries.length;
 function renderPrologue() {
   prologueEyebrow.textContent = story.prologue.eyebrow;
   prologueTitle.innerHTML = ui().prologueTitle;
-  prologuePages.innerHTML = story.prologue.paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join('');
+  // Prólogo curto: gancho + três cartões (os parágrafos completos seguem em story.prologue).
+  prologueHook.textContent = ui().prologueHook;
+  prologueCards.innerHTML = ui().prologueCards.map(([icon, label]) => `<div><span aria-hidden="true">${icon}</span><strong>${label}</strong></div>`).join('');
   prologueMission.textContent = story.prologue.mission;
 }
 
@@ -688,10 +740,15 @@ function openStoryStep(discovery: Discovery, step: StoryStep, tab: HTMLButtonEle
 loadProgress();
 updateHud();
 
-// Abertura: 1) escolha do idioma; 2) prólogo; 3) jogo. O idioma vale para toda a sessão.
+// Abertura: 1) escolha do idioma; 2) nome do jogador (opcional); 3) prólogo; 4) jogo.
 const languageStep = byId('language-step');
+const nameStep = byId('name-step');
 const prologueStep = byId('prologue-step');
 const languageButtons = [...document.querySelectorAll<HTMLButtonElement>('.language-option')];
+const nameInput = document.querySelector<HTMLInputElement>('#player-name')!;
+const PLAYER_NAME_KEY = 'space-historians:nome';
+let playerName = '';
+try { playerName = localStorage.getItem(PLAYER_NAME_KEY) ?? ''; } catch { /* ignora */ }
 
 function applyLanguage(lang: Lang) {
   setLang(lang);
@@ -703,25 +760,51 @@ function applyLanguage(lang: Lang) {
   updateHud();
 }
 
+function showStep(step: HTMLElement) {
+  [languageStep, nameStep, prologueStep].forEach((node) => node.classList.toggle('step-hidden', node !== step));
+}
+
 function showLanguageStep() {
-  prologueStep.classList.add('step-hidden');
-  languageStep.classList.remove('step-hidden');
+  showStep(languageStep);
   const suggested = languageButtons.find((button) => button.dataset.lang === languagePreference.lang) ?? languageButtons[0];
   languageButtons.forEach((button) => button.classList.toggle('suggested', button === suggested));
   suggested.focus({ preventScroll: true });
 }
 
-function showPrologueStep(lang: Lang) {
+function showNameStep(lang: Lang) {
   applyLanguage(lang);
-  languageStep.classList.add('step-hidden');
-  prologueStep.classList.remove('step-hidden');
+  nameInput.placeholder = ui().namePlaceholder;
+  nameInput.value = playerName;
+  showStep(nameStep);
+  nameInput.focus({ preventScroll: true });
+}
+
+function showPrologueStep() {
+  showStep(prologueStep);
   startButton.focus({ preventScroll: true });
 }
 
-languageButtons.forEach((button) => button.addEventListener('click', () => showPrologueStep(button.dataset.lang as Lang)));
+function confirmName(name: string) {
+  playerName = name.trim().slice(0, 20);
+  try {
+    if (playerName) localStorage.setItem(PLAYER_NAME_KEY, playerName);
+    else localStorage.removeItem(PLAYER_NAME_KEY);
+  } catch { /* ignora */ }
+  showPrologueStep();
+}
+
+languageButtons.forEach((button) => button.addEventListener('click', () => showNameStep(button.dataset.lang as Lang)));
+byId('name-continue').addEventListener('click', () => confirmName(nameInput.value));
+byId('name-skip').addEventListener('click', () => confirmName(''));
+nameInput.addEventListener('keydown', (event) => {
+  // As teclas digitadas no nome não podem chegar aos controles do jogo.
+  event.stopPropagation();
+  // preventDefault: sem ele, o mesmo Enter "clica" no botão do prólogo, que recebe o foco, e pula a tela.
+  if (event.key === 'Enter') { event.preventDefault(); confirmName(nameInput.value); }
+});
 byId('change-language').addEventListener('click', showLanguageStep);
-// ?lang=pt ou ?lang=en na URL pula a escolha (útil para links de apresentação).
-if (languagePreference.fromUrl) showPrologueStep(languagePreference.lang);
+// ?lang=pt ou ?lang=en na URL pula a escolha e o nome (útil para links de apresentação).
+if (languagePreference.fromUrl) { applyLanguage(languagePreference.lang); showPrologueStep(); }
 else showLanguageStep();
 
 startButton.addEventListener('click', () => {
@@ -821,7 +904,8 @@ function updateDiscoveryToast() {
     return;
   }
   const opened = openedDiscoveries.has(discovery.number);
-  toastEyebrow.textContent = opened ? ui().toastArchive : ui().toastFound;
+  const eyebrow = opened ? ui().toastArchive : ui().toastFound;
+  toastEyebrow.textContent = playerName ? `${eyebrow} · ${playerName.toUpperCase()}` : eyebrow;
   investigateButton.firstChild!.textContent = opened ? ui().openCard : ui().investigate;
   toastNote.textContent = '';
 }
@@ -898,13 +982,14 @@ scene.onBeforeRenderObservable.add(() => {
     if (direction.lengthSquared() > 1) direction.normalize();
     astronaut.position.addInPlace(direction.scale(WALK_SPEED * dt));
     resolveCollisions(astronaut.position);
-    astronaut.position.y = Math.abs(Math.sin(performance.now() / 115)) * 0.055;
     astronaut.position.x = Math.max(-MAP_LIMIT, Math.min(MAP_LIMIT, astronaut.position.x));
     astronaut.position.z = Math.max(-MAP_LIMIT, Math.min(MAP_LIMIT, astronaut.position.z));
-    // O modelo Poly considera o eixo frontal oposto ao usado pela movimentação.
+    // O visor do astronauta aponta para -Z, por isso a meia-volta.
     astronaut.rotation.y = Math.atan2(direction.x, direction.z) + Math.PI;
+    // No joystick, empurrar pouco dá passos mais lentos.
+    animateWalk(dt, Math.min(1, Math.sqrt(input.lengthSquared())));
   } else {
-    astronaut.position.y *= 0.82;
+    relaxPose();
   }
   // A câmera acompanha o astronauta o tempo todo, de forma suave.
   const follow = 1 - Math.exp(-dt * 4);
